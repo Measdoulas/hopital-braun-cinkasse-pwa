@@ -5,7 +5,15 @@
 
 const APP_PREFIX = 'hbc_app_';
 
-class StorageService {
+export class StorageService {
+    static instance = null;
+
+    static getInstance() {
+        if (!StorageService.instance) {
+            StorageService.instance = new StorageService();
+        }
+        return StorageService.instance;
+    }
     /**
      * Récupère une valeur du stockage.
      * @param {string} key - La clé de l'élément.
