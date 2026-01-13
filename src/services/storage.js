@@ -86,6 +86,26 @@ export class StorageService {
     }
 
     /**
+     * Récupère toutes les clés du stockage (sans préfixe app)
+     * @returns {string[]} Liste des clés
+     */
+    getAllKeys() {
+        try {
+            const keys = [];
+            for (let i = 0; i < localStorage.length; i++) {
+                const key = localStorage.key(i);
+                if (key && key.startsWith(APP_PREFIX)) {
+                    keys.push(key.substring(APP_PREFIX.length));
+                }
+            }
+            return keys;
+        } catch (error) {
+            console.error("Erreur getAllKeys:", error);
+            return [];
+        }
+    }
+
+    /**
      * Vide tout le stockage de l'application (utile pour le debug/reset).
      */
     clear() {
