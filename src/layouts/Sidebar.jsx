@@ -7,7 +7,6 @@ import {
     FileText,
     History,
     BarChart2,
-    BarChart2,
     LogOut,
     Settings
 } from 'lucide-react';

@@ -139,3 +139,4 @@ function generateDemoData() {
     });
 
     return { daily, weekly };
+}
