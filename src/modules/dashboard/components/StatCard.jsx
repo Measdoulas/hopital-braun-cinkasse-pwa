@@ -3,7 +3,7 @@ import { Card, CardContent } from '../../../components/ui/Card';
 import { clsx } from 'clsx';
 import { ArrowUpRight, ArrowDownRight, Minus } from 'lucide-react';
 
-const StatCard = ({ title, value, trend, trendValue, icon: Icon, color = "blue" }) => {
+const StatCard = ({ title, value, subValue, trend, trendValue, icon: Icon, color = "blue" }) => {
     const colorStyles = {
         blue: { bg: "bg-blue-50", text: "text-blue-600" },
         purple: { bg: "bg-purple-50", text: "text-purple-600" },
@@ -29,7 +29,10 @@ const StatCard = ({ title, value, trend, trendValue, icon: Icon, color = "blue" 
                 <div className="flex justify-between items-start">
                     <div>
                         <p className="text-sm font-medium text-neutral-500">{title}</p>
-                        <h3 className="text-3xl font-bold text-neutral-900 mt-2 tracking-tight">{value}</h3>
+                        <div className="flex items-baseline gap-2">
+                            <h3 className="text-3xl font-bold text-neutral-900 mt-2 tracking-tight">{value}</h3>
+                            {subValue && <span className="text-sm font-medium text-neutral-400">{subValue}</span>}
+                        </div>
                     </div>
                     <div className={clsx("p-3 rounded-xl", style.bg)}>
                         <Icon className={clsx("w-6 h-6", style.text)} />
