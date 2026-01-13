@@ -11,6 +11,7 @@ const WeeklyReportPage = lazy(() => import('./modules/weekly-report/WeeklyReport
 const ValidationPage = lazy(() => import('./modules/validation/ValidationPage'));
 const HistoryPage = lazy(() => import('./modules/history/HistoryPage'));
 const StatisticsPage = lazy(() => import('./modules/statistics/StatisticsPage'));
+const SettingsPage = lazy(() => import('./modules/settings/SettingsPage'));
 
 // Loading fallback component
 const PageLoader = () => (
@@ -61,6 +62,7 @@ function App() {
               <Route path="validation" element={<ValidationPage />} />
               <Route path="historique" element={<HistoryPage />} />
               <Route path="statistiques" element={<StatisticsPage />} />
+              <Route path="parametres" element={<SettingsPage />} />
             </Route>
           </Routes>
         </Suspense>

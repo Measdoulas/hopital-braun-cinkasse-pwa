@@ -7,7 +7,9 @@ import {
     FileText,
     History,
     BarChart2,
-    LogOut
+    BarChart2,
+    LogOut,
+    Settings
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { ROLES } from '../utils/data-models';
@@ -55,6 +57,12 @@ const Sidebar = ({ className, onClose }) => {
                 to: '/statistiques',
                 icon: BarChart2,
                 label: 'Statistiques',
+                roles: [ROLES.DIRECTION, ROLES.ADMIN]
+            },
+            {
+                to: '/parametres',
+                icon: Settings,
+                label: 'Paramètres',
                 roles: [ROLES.DIRECTION, ROLES.ADMIN]
             },
         ];
