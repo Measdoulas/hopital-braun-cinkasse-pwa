@@ -12,10 +12,13 @@ export async function seedData() {
 
     if (!existingUsers || existingUsers.length === 0) {
         console.log("Initialisation des données de test...");
-        const users = [];
+        // const users = []; // Original line, will be replaced by the new structure
         const now = new Date().toISOString();
 
-        // 1. Compte Admin
+        // 2. Créer les utilisateurs (Hiérarchie complète)
+        const users = [];
+
+        // Admin & Direction
         users.push({
             id: generateId(),
             username: 'admin',
@@ -25,8 +28,6 @@ export async function seedData() {
             isActive: true,
             createdAt: now,
         });
-
-        // 2. Compte Direction
         users.push({
             id: generateId(),
             username: 'direction',
@@ -37,13 +38,12 @@ export async function seedData() {
             createdAt: now,
         });
 
-        // 3. Comptes Services
+        // Création des comptes Service (Garde) et Chef pour chaque département
         for (const service of SERVICES) {
-            // Génère un username sans accents et sans espaces (ex: "gyneco-obstetrique" -> "gyneco")
-            // Ici on utilise simplement l'ID du service qui est propre
+            // Compte de Garde (Saisie)
             users.push({
                 id: generateId(),
-                username: service.id,
+                username: service.id, // ex: gyneco
                 passwordHash: await hashPassword('test123'),
                 serviceName: service.name,
                 role: ROLES.SERVICE,

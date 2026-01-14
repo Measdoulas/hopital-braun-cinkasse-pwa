@@ -57,7 +57,7 @@ const WeeklyReportPage = () => {
                 serviceId: serviceId,
                 period: period,
                 data: reportData.data,
-                status: 'pending', // pending, validated, rejected
+                status: 'TRANSMITTED_TO_CHIEF', // pending, validated, rejected
                 submittedAt: new Date().toISOString(),
                 submittedBy: user.username,
                 dailyReportsCount: reportData.dailyReportsCount

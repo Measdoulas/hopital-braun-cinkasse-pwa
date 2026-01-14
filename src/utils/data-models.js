@@ -4,6 +4,7 @@
 export const ROLES = {
     ADMIN: 'admin',
     DIRECTION: 'direction',
+    CHEF_SERVICE: 'chef_service',
     SERVICE: 'service',
 };
 
@@ -26,8 +27,10 @@ export const SERVICES = [
  * Statuts possibles pour un rapport hebdomadaire.
  */
 export const REPORT_STATUS = {
-    DRAFT: 'brouillon',
-    PENDING: 'en_attente',
-    VALIDATED: 'valide',
-    REJECTED: 'rejete',
+    DRAFT: 'brouillon',       // En cours de saisie par la garde
+    PENDING: 'en_attente',    // Soumis au Chef de Service (Legacy: Direction) - On utilisera TRANSMITTED_TO_CHIEF pour être clair
+    TRANSMITTED_TO_CHIEF: 'transmis_chef', // Soumis au Chef
+    VALIDATED_BY_CHIEF: 'valide_chef',     // Validé par Chef -> Visible Direction
+    VALIDATED: 'valide',      // Validé Finale (Direction)
+    REJECTED: 'rejete',       // Rejeté (Retour au brouillon)
 };

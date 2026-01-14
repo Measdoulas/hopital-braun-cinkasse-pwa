@@ -9,19 +9,30 @@ export const SERVICE_CONFIGS = {
         consultationTypes: [
             { id: 'cpn', label: 'CPN (Prénatale)' },
             { id: 'cpon', label: 'CPON (Post-natale)' },
-            { id: 'gyneco', label: 'Gynécologie' },
+            { id: 'gyneco', label: 'Consultation Gynéco' },
+            { id: 'maternite', label: 'Maternité (Admission)' },
             { id: 'pf', label: 'Planification Familiale' },
-            { id: 'maternite', label: 'Maternité' },
-            { id: 'vaccination', label: 'Vaccination' }
+            { id: 'vaccination', label: 'Vaccination' },
+            { id: 'ecoute', label: 'Écoute / Orientation' }
         ],
         actTypes: [
-            { id: 'echo_ext', label: 'Echo Obst. Externe' },
-            { id: 'echo_int', label: 'Echo Obst. Interne' },
+            // Échographies
+            { id: 'echo_obs_ext', label: 'Echo Obst. Externe' },
+            { id: 'echo_obs_int', label: 'Echo Obst. Interne' },
             { id: 'echo_pelv', label: 'Echo Pelvienne' },
-            { id: 'acc_vb', label: 'Accouchement VB' },
-            { id: 'acc_cesarienne', label: 'Césarienne' },
+            // Accouchements
+            { id: 'acc_eutocique', label: 'Acc. Voie Basse (Eutocique)' },
+            { id: 'acc_dystocique', label: 'Acc. Voie Basse (Dystocique)' },
+            { id: 'cesarienne', label: 'Césarienne' },
+            // Chirurgie Gynéco
+            { id: 'hysterectomie', label: 'Hystérectomie' },
+            { id: 'myomectomie', label: 'Myomectomie' },
+            { id: 'kystectomie', label: 'Kystectomie' },
+            { id: 'geu', label: 'GEU (Grossesse Extra-Utérine)' },
+            // Petits actes
             { id: 'amiu', label: 'AMIU' },
             { id: 'curetage', label: 'Curetage' },
+            { id: 'cerclage', label: 'Cerclage' },
             { id: 'pansement', label: 'Pansement' }
         ]
     },
@@ -29,15 +40,24 @@ export const SERVICE_CONFIGS = {
     chirurgie: {
         hasBeds: true,
         consultationTypes: [
-            { id: 'chir_generale', label: 'Chirurgie Générale' },
-            { id: 'traumato', label: 'Traumatologie' },
-            { id: 'urologie', label: 'Urologie' }
+            { id: 'chir_cons', label: 'Consultation Chirurgie' },
+            { id: 'traumato', label: 'Consultation Traumato' },
+            { id: 'urologie', label: 'Consultation Urologie' },
+            { id: 'visite_pre_anest', label: 'Visite Pré-anesthésique' }
         ],
         actTypes: [
-            { id: 'intervention_majeure', label: 'Intervention Majeure' },
-            { id: 'intervention_mineure', label: 'Intervention Mineure' },
+            // Grande Chirurgie
+            { id: 'herniorraphie', label: 'Herniorraphie' },
+            { id: 'appendicectomie', label: 'Appendicectomie' },
+            { id: 'laparotomie', label: 'Laparotomie' },
+            { id: 'prostatectomie', label: 'Prostatectomie' },
+            { id: 'osteosynthese', label: 'Ostéosynthèse' },
+            // Petite Chirurgie
+            { id: 'circumcision', label: 'Circoncision' },
+            { id: 'lipome', label: 'Exérèse Lipome/Kyste' },
+            { id: 'suture', label: 'Suture' },
             { id: 'pansement', label: 'Pansement' },
-            { id: 'platre', label: 'Pose de plâtre' }
+            { id: 'platre', label: 'Pose Plâtre/Attelle' }
         ]
     },
     // Médecine Générale

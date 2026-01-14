@@ -66,16 +66,16 @@ const PatientMovementSection = ({ data, onChange, readOnly = false }) => {
 
                 {/* Détail des Sorties */}
                 <div>
-                    <label className="text-xs font-bold text-neutral-500 uppercase mb-3 block">Détail des Sorties</label>
+                    <label className="text-xs font-bold text-neutral-500 uppercase mb-3 block">Détail des Sorties & Mouvements</label>
                     <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-                        <NumberField label="À Domicile" value={s.aDomicile} onChange={(v) => updateSortie('aDomicile', v)} readOnly={readOnly} />
+                        <NumberField label="Sorties (Guérison)" value={s.aDomicile} onChange={(v) => updateSortie('aDomicile', v)} readOnly={readOnly} />
                         <NumberField label="Décès" value={s.deces} onChange={(v) => updateSortie('deces', v)} readOnly={readOnly} />
-                        <NumberField label="Référés" value={s.referes} onChange={(v) => updateSortie('referes', v)} readOnly={readOnly} />
-                        <NumberField label="Transférés" value={s.transferts} onChange={(v) => updateSortie('transferts', v)} readOnly={readOnly} />
-                        <NumberField label="Fugitifs" value={s.fugitifs} onChange={(v) => updateSortie('fugitifs', v)} readOnly={readOnly} />
+                        <NumberField label="Référés (Vers ext.)" value={s.referes} onChange={(v) => updateSortie('referes', v)} readOnly={readOnly} />
+                        <NumberField label="Transférés (Interne)" value={s.transferts} onChange={(v) => updateSortie('transferts', v)} readOnly={readOnly} />
+                        <NumberField label="Évadés" value={s.fugitifs} onChange={(v) => updateSortie('fugitifs', v)} readOnly={readOnly} />
                         <NumberField label="Mise en OBS" value={s.observ} onChange={(v) => updateSortie('observ', v)} readOnly={readOnly} />
-                        <NumberField label="Contre Avis" value={s.contreAvis} onChange={(v) => updateSortie('contreAvis', v)} readOnly={readOnly} />
-                        <NumberField label="Autres" value={s.autres} onChange={(v) => updateSortie('autres', v)} readOnly={readOnly} />
+                        <NumberField label="Sorties c/ Avis Médical" value={s.contreAvis} onChange={(v) => updateSortie('contreAvis', v)} readOnly={readOnly} />
+                        <NumberField label="Autres Sorties" value={s.autres} onChange={(v) => updateSortie('autres', v)} readOnly={readOnly} />
                     </div>
                 </div>
             </CardContent>
