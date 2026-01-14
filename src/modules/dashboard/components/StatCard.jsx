@@ -1,6 +1,6 @@
 import React from 'react';
 import { Card, CardContent } from '../../../components/ui/Card';
-import { clsx } from 'clsx';
+import clsx from 'clsx';
 import { ArrowUpRight, ArrowDownRight, Minus } from 'lucide-react';
 
 const StatCard = ({ title, value, subValue, trend, trendValue, icon: Icon, color = "blue" }) => {

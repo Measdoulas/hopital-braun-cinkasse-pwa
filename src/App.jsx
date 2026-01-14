@@ -25,9 +25,9 @@ const PageLoader = () => (
 
 // Protected Route wrapper
 const ProtectedRoute = ({ children }) => {
-  const { user, isLoading } = useAuth();
+  const { user, loading } = useAuth();
 
-  if (isLoading) {
+  if (loading) {
     return <PageLoader />;
   }
 

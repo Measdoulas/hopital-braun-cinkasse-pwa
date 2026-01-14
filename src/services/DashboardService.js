@@ -3,10 +3,7 @@ import { ROLES, SERVICES } from '../utils/data-models';
 import { startOfWeek, endOfWeek, subWeeks, format, parseISO, isWithinInterval } from 'date-fns';
 import { fr } from 'date-fns/locale';
 
-import { storage } from './storage';
-import { ROLES, SERVICES } from '../utils/data-models';
-import { startOfWeek, endOfWeek, subWeeks, format, parseISO, isWithinInterval } from 'date-fns';
-import { fr } from 'date-fns/locale';
+
 
 export class DashboardService {
     constructor() {

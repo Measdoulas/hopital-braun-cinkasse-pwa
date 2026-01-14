@@ -6,7 +6,7 @@ import { AuthProvider } from './contexts/AuthContext';
 import { seedData } from './services/seed';
 
 // Initialisation des données au démarrage
-seedData().catch(console.error);
+// seedData().catch(console.error);
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>

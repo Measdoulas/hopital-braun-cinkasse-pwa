@@ -30,11 +30,11 @@ export const AuthProvider = ({ children }) => {
         const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
             if (session?.user) {
                 setUser(mapSupabaseUser(session.user));
-                setLoading(false);
             } else {
                 setUser(null);
-                setLoading(false);
             }
+            // Note: onAuthStateChange fires initially too, but checkSession is usually safer for initial load blocking
+            // We set loading false in checkSession mostly.
         });
 
         return () => subscription.unsubscribe();

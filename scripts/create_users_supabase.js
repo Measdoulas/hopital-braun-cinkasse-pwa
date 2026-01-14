@@ -61,9 +61,14 @@ async function createAccount(username, password, role, serviceName, serviceId = 
 async function main() {
     console.log("=== Démarrage création comptes Supabase ===");
 
+    // Fonction utilitaire pour la pause
+    const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
     // 1. Admin & Direction
     await createAccount('admin', 'admin123', ROLES.ADMIN, 'Administrateur Système');
+    await sleep(3000); // Pause 3s
     await createAccount('direction', 'direction123', ROLES.DIRECTION, 'Direction Hôpital');
+    await sleep(3000);
 
     // 2. Services & Chefs
     for (const service of SERVICES) {
@@ -75,6 +80,7 @@ async function main() {
             `Garde ${service.name}`,
             service.id
         );
+        await sleep(3000); // Pause 3s entre chaque appel
 
         // Chef
         await createAccount(
@@ -84,6 +90,7 @@ async function main() {
             `Chef ${service.name}`,
             service.id
         );
+        await sleep(3000); // Pause 3s
     }
 
     console.log("=== Terminé ===");
