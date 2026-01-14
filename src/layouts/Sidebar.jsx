@@ -44,7 +44,7 @@ const Sidebar = ({ className, onClose }) => {
                 to: '/validation',
                 icon: FileText,
                 label: 'Validation',
-                roles: [ROLES.DIRECTION]
+                roles: [ROLES.DIRECTION, ROLES.CHEF_SERVICE, ROLES.ADMIN]
             },
             {
                 to: '/historique',

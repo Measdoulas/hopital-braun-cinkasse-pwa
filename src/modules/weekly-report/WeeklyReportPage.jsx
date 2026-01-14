@@ -4,6 +4,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { storage } from '../../services/storage';
 import { compileWeeklyReport, getWeekRange } from '../../utils/reports';
 import { generateId } from '../../utils/ids';
+import { REPORT_STATUS } from '../../utils/data-models';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Alert } from '../../components/ui/Alert';
@@ -57,7 +58,7 @@ const WeeklyReportPage = () => {
                 serviceId: serviceId,
                 period: period,
                 data: reportData.data,
-                status: 'TRANSMITTED_TO_CHIEF', // pending, validated, rejected
+                status: REPORT_STATUS.TRANSMITTED_TO_CHIEF,
                 submittedAt: new Date().toISOString(),
                 submittedBy: user.username,
                 dailyReportsCount: reportData.dailyReportsCount

@@ -45,9 +45,21 @@ export async function seedData() {
                 id: generateId(),
                 username: service.id, // ex: gyneco
                 passwordHash: await hashPassword('test123'),
-                serviceName: service.name,
+                serviceName: `Garde ${service.name}`,
                 role: ROLES.SERVICE,
                 serviceId: service.id, // Lien vers la définition du service
+                isActive: true,
+                createdAt: now,
+            });
+
+            // Compte Chef de Service (Validation Niveau 1)
+            users.push({
+                id: generateId(),
+                username: `${service.id}_chef`, // ex: gyneco_chef
+                passwordHash: await hashPassword('chef123'),
+                serviceName: `Chef ${service.name}`,
+                role: ROLES.CHEF_SERVICE,
+                serviceId: service.id,
                 isActive: true,
                 createdAt: now,
             });
@@ -63,12 +75,14 @@ export async function seedData() {
         };
         storage.set('config-generale', config);
 
+        // PRODUCTION: Pas de données de démonstration
+        // Les utilisateurs partiront d'une base propre
         // 4. Données de démonstration (Rapports)
-        console.log("Génération des données de démonstration...");
-        const demoReports = generateDemoData();
-        demoReports.daily.forEach(r => storage.set(`rapports-journaliers:${r.serviceId}:${r.date}`, r));
-        demoReports.weekly.forEach(r => storage.set(`rapports-hebdo:${r.serviceId}:${r.year}-${r.weekNumber}`, r));
-        console.log("Données de démonstration générées.");
+        // console.log("Génération des données de démonstration...");
+        // const demoReports = generateDemoData();
+        // demoReports.daily.forEach(r => storage.set(`rapports-journaliers:${r.serviceId}:${r.date}`, r));
+        // demoReports.weekly.forEach(r => storage.set(`rapports-hebdo:${r.serviceId}:${r.year}-${r.weekNumber}`, r));
+        console.log("Configuration initialisée. Application prête pour la production.");
 
     } else {
         console.log("Données déjà initialisées.");
