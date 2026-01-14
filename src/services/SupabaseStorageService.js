@@ -48,7 +48,7 @@ export class SupabaseStorageService {
                 serviceId: data.service_id,
                 date: data.date,
                 dateFin: data.date_fin,
-                data: data.report_data
+                data: data.data // <--- FIXED: Column name is 'data'
             };
         } catch (error) {
             console.error('Error fetching daily report:', error);
@@ -69,7 +69,7 @@ export class SupabaseStorageService {
                 service_id: serviceId,
                 date: date,
                 date_fin: dateFin || date, // Si pas de fin, fin = début (rétrocompat)
-                report_data: reportData
+                data: reportData // <--- FIXED: Column name is 'data'
             };
 
             const { data, error } = await supabase

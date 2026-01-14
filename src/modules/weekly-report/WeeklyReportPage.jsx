@@ -148,6 +148,22 @@ const WeeklyReportPage = () => {
                                 readOnly={true}
                             />
                         </div>
+
+                        {!isReadOnly && (
+                            <div className="flex justify-end pt-4">
+                                {!success ? (
+                                    <Button onClick={handleSubmit} variant="primary" isLoading={loading}>
+                                        <CheckCircle className="mr-2 h-4 w-4" />
+                                        Soumettre à la Direction
+                                    </Button>
+                                ) : (
+                                    <Button variant="secondary" disabled className="text-green-600 border-green-200 bg-green-50">
+                                        <CheckCircle className="mr-2 h-4 w-4" />
+                                        Soumis avec succès !
+                                    </Button>
+                                )}
+                            </div>
+                        )}
                     </CardContent>
                 </Card>
             )}
