@@ -29,43 +29,42 @@ const HistoryPage = () => {
         applyFilters();
     }, [searchTerm, filterService, filterType, reports]);
 
-    const loadAllReports = () => {
+    const loadAllReports = async () => {
         setLoading(true);
         const storage = StorageService.getInstance();
-        const allKeys = storage.getAllKeys();
 
         const loadedReports = [];
 
-        // Charger rapports quotidiens
-        const dailyKeys = allKeys.filter(key => key.startsWith('rapports-quotidiens:'));
-        dailyKeys.forEach(key => {
-            const report = storage.get(key);
-            if (report) {
-                const [, serviceId, date] = key.split(':');
-                loadedReports.push({
-                    ...report,
-                    _key: key,
-                    _type: 'daily',
-                    serviceId,
-                    date,
-                    displayDate: format(parseISO(date), 'dd/MM/yyyy', { locale: fr })
-                });
-            }
-        });
+        // 1. Rapports Hebdomadaires (Supporté via storage.list async)
+        try {
+            const weeklyKeyValues = await storage.list('rapports-hebdo');
+            weeklyKeyValues.forEach(kv => {
+                const report = kv.value;
+                if (report) {
+                    loadedReports.push({
+                        ...report,
+                        _key: kv.key,
+                        _type: 'weekly',
+                        displayDate: `Semaine ${report.weekNumber}/${report.year}`
+                    });
+                }
+            });
+        } catch (e) {
+            console.error("Erreur chargement rapports hebdos:", e);
+        }
 
-        // Charger rapports hebdomadaires
-        const weeklyKeys = allKeys.filter(key => key.startsWith('rapports-hebdo:'));
-        weeklyKeys.forEach(key => {
-            const report = storage.get(key);
-            if (report) {
-                loadedReports.push({
-                    ...report,
-                    _key: key,
-                    _type: 'weekly',
-                    displayDate: `Semaine ${report.weekNumber}/${report.year}`
-                });
-            }
-        });
+        // 2. Rapports Quotidiens
+        // Note: getAllKeys() n'est plus supporté avec Supabase.
+        // Pour l'instant, l'historique global liste principalement les rapports d'activité validés (Hebdo).
+        // L'affichage des rapports quotidiens bruts est désactivé temporairement dans l'historique global
+        // pour des raisons de performance. Ils restent accessibles via la création/hebdo.
+        // TODO: Ajouter une pagination serveur pour les rapports quotidiens si nécessaire.
+
+        /* 
+        // ANCIEN CODE REPORT QUOTIDIEN (Incompatible Supabase getAllKeys)
+        const dailyKeys = allKeys.filter(key => key.startsWith('rapports-quotidiens:'));
+        dailyKeys.forEach(key => { ... });
+        */
 
         // Trier par date (plus récent d'abord)
         loadedReports.sort((a, b) => {

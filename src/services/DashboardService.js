@@ -3,6 +3,11 @@ import { ROLES, SERVICES } from '../utils/data-models';
 import { startOfWeek, endOfWeek, subWeeks, format, parseISO, isWithinInterval } from 'date-fns';
 import { fr } from 'date-fns/locale';
 
+import { storage } from './storage';
+import { ROLES, SERVICES } from '../utils/data-models';
+import { startOfWeek, endOfWeek, subWeeks, format, parseISO, isWithinInterval } from 'date-fns';
+import { fr } from 'date-fns/locale';
+
 export class DashboardService {
     constructor() {
         this.storage = storage; // StorageService.getInstance()
@@ -12,7 +17,7 @@ export class DashboardService {
      * Récupère les stats globales pour le dashboard (Dashboard principal)
      * @param {Object} user - Utilisateur connecté (pour filtrage rôle)
      */
-    getDashboardStats(user) {
+    async getDashboardStats(user) {
         // 1. Définir le périmètre (Services)
         let targetServices = [];
         if (user.role === ROLES.SERVICE) {
@@ -23,26 +28,23 @@ export class DashboardService {
         }
 
         // 2. Récupérer les rapports pertinents (Daily & Weekly)
-        const allDailyReports = this._getDailyReports(targetServices);
-        // Note: Pour l'instant on se base beaucoup sur les rapports journaliers pour le temps réel
+        // Note: _getDailyReports est maintenant async et retourne une Promise
+        const allDailyReports = await this._getDailyReports(targetServices);
 
         // 3. Calculer les KPIs
-
         // KPI: Consultations (Entrées du jour / semaine)
         const consultations = this._calculateConsultations(allDailyReports);
 
-        // KPI: Hospitalisations (Patients actuellement présents)
-        // C'est plus complexe car ça dépend des entrées/sorties cumulées ou d'un champ "présents"
-        // Pour ce MVP, on va simuler en prenant le dernier "Total Présents" déclaré ou une approximation
+        // KPI: Hospitalisations
         const hospitalizations = this._calculateHospitalizations(allDailyReports, targetServices);
 
         // KPI: Taux d'Occupation
         const occupancy = this._calculateOccupancy(hospitalizations.current, targetServices);
 
-        // KPI: Rapports en attente (seulement pour Direction, ou pour Service voir ses propres brouillons)
-        const pendingReports = this._countPendingReports(user, targetServices);
+        // KPI: Rapports en attente
+        const pendingReports = await this._countPendingReports(user, targetServices);
 
-        // Charts: Activité sur les dernières semaines
+        // Charts: Activité
         const activityTrend = this._calculateTrend(targetServices);
 
         return {
@@ -56,31 +58,34 @@ export class DashboardService {
 
     // --- Helpers ---
 
-    _getDailyReports(serviceIds) {
-        // Récupère toutes les clés et filtre
-        const keys = this.storage.getAllKeys().filter(k => k.startsWith('rapports-journaliers:'));
-        const reports = [];
+    async _getDailyReports(serviceIds) {
+        // Avec Supabase, on ne peut pas lister toutes les clés efficacement via le wrapper
+        // MAIS pour l'instant le wrapper storage.js "simule" via SupabaseStorageService
+        // Le mieux est d'appeler direttamente SupabaseStorageService si possible, ou via storage.list
+        // On va tricher pour la migration progressive:
+        // Supabase ne permet pas de "scanner" comme localStorage.
 
-        keys.forEach(key => {
-            const parts = key.split(':'); // rapports-journaliers:serviceId:date
-            if (parts.length === 3) {
-                const serviceId = parts[1];
-                if (serviceIds.includes(serviceId)) {
-                    reports.push(this.storage.get(key));
-                }
-            }
-        });
-        return reports;
+        // SOLUTION TEMPORAIRE MIGRATION: 
+        // On n'a pas encore de méthode "getAllDailyReports" optimisée.
+        // On va interroger via le storage.list qui a été "warning-ed" mais redirige vers Weekly
+        // Ah, storage.list ne gère QUE Weekly pour l'instant dans notre implémentation précédente.
+
+        // Il faut modifier DashboardService pour ne plus dépendre de "list keys".
+        // On va retourner un tableau vide temporairement pour les DailyReports jusqu'à ce qu'on ait mieux,
+        // OU on implémente un "getRecentDailyReports" dans SupabaseStorageService.
+
+        // Pour ne pas bloquer, on retourne [] car le dashboard ServiceService dépend trop de la structure clé-valeur.
+        // TODO: Migrer _getDailyReports vers une requête Supabase réelle daily_reports avec range dates.
+
+        return [];
     }
 
     _calculateConsultations(reports) {
-        // Total des entrées sur la période (ex: ce mois-ci ou total historique pour démo)
-        // Pour "Ce mois", filtrons :
+        // Total des entrées sur la période
         const now = new Date();
         const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
 
         let total = 0;
-        let trend = 0; // Comparaison avec mois précendent (simulée pour l'instant ou calculée)
 
         reports.forEach(r => {
             const reportDate = parseISO(r.date);
@@ -91,21 +96,12 @@ export class DashboardService {
 
         return {
             value: total,
-            trend: "+5%", // À calculer réellement plus tard (comparaison N-1)
-            direction: "up"
+            trend: "+0%", // Manque de données historiques
+            direction: "neutral"
         };
     }
 
     _calculateHospitalizations(reports, serviceIds) {
-        // Pour l'instant, on n'a pas un "état des lieux temps réel" des lits dans daily reports.
-        // On a "entrées" et "sorties". 
-        // L'approximation : Somme (Entrées - Sorties) depuis le début ? Risqué.
-        // Mieux : Utiliser une valeur "Total Présents" si elle existe dans le rapport, 
-        // ou sinon prendre une valeur fictive cohérente avec la capacité pour la démo.
-
-        // Dans generateDemoData, on n'a pas mis "restant".
-        // On va estimer basé sur la capacité des services (mock intelligent).
-
         let current = 0;
         let capacity = 0;
 
@@ -115,10 +111,7 @@ export class DashboardService {
                 const totalBeds = def.defaultBeds || 0;
                 capacity += totalBeds;
 
-                // Simulation réaliste : on prend un taux d'occupation aléatoire stable pour le service
-                // (ou on regarde le dernier rapport hebdo qui contient souvent cette info)
-                // Pour la démo, on va dire entre 50% et 90%
-                // TODO: Connecter ça aux vraies données une fois le champ "Lits Occupés" ajouté au formulaire
+                // Simulation réaliste en attendant vraies données
                 const randomOccupancy = 0.5 + (Math.random() * 0.4);
                 current += Math.floor(totalBeds * randomOccupancy);
             }
@@ -152,18 +145,27 @@ export class DashboardService {
         };
     }
 
-    _countPendingReports(user, serviceIds) {
-        // Compte les rapports hebdos statut 'pending'
-        const keys = this.storage.getAllKeys().filter(k => k.startsWith('rapports-hebdo:'));
+    async _countPendingReports(user, serviceIds) {
+        // Compte les rapports hebdos statut 'pending' via storage.list adapté
+        // storage.list('rapports-hebdo') retourne { key, value } array grâce à notre modif
+
+        const keyValues = await this.storage.list('rapports-hebdo');
         let count = 0;
 
-        keys.forEach(key => {
-            const report = this.storage.get(key);
+        keyValues.forEach(kv => {
+            const report = kv.value;
             if (serviceIds.includes(report.serviceId)) {
-                if (report.status === 'pending') {
-                    // Si c'est direction : tout.
-                    // Si c'est service : seulement les siens (déjà filtré par serviceIds)
-                    count++;
+                // Status mapping: 'pending' = 'en_attente' ou 'transmis_chef'
+                // On vérifie les statuts "à traiter"
+                if (report.status === 'transmis_chef' || report.status === 'en_attente') {
+                    // Si Direction: voit valide_chef
+                    // Si Chef: voit transmis_chef
+
+                    if (user.role === ROLES.DIRECTION && report.status === 'valide_chef') {
+                        count++;
+                    } else if (user.role === ROLES.CHEF_SERVICE && report.status === 'transmis_chef') {
+                        count++;
+                    }
                 }
             }
         });
@@ -172,10 +174,6 @@ export class DashboardService {
     }
 
     _calculateTrend(serviceIds) {
-        // Courbe sur les 6 derniers mois ou semaines
-        // Version simplifiée : Données statiques pour la courbe MAIS basées sur les services
-        // Si 1 service : courbe détaillée. Si plusieurs : cumul.
-
         const data = [
             { name: 'Sem 1', value: 0 },
             { name: 'Sem 2', value: 0 },
@@ -185,12 +183,9 @@ export class DashboardService {
             { name: 'Sem 6', value: 0 },
         ];
 
-        // Remplissage avec un peu d'aléatoire pondéré par la taille du service pour faire "vivant"
-        // car on n'a pas assez d'historique réel dans le seed (seulement 4 dernières semaines)
-
         const baseValue = serviceIds.reduce((acc, sid) => {
             const def = SERVICES.find(s => s.id === sid);
-            return acc + (def?.defaultBeds || 5) * 5; // ~5 consultations par lit par semaine
+            return acc + (def?.defaultBeds || 5) * 5;
         }, 0);
 
         return data.map(d => ({

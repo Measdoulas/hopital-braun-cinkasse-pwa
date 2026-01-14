@@ -29,12 +29,14 @@ const DailyEntryPage = () => {
         loadData(selectedDate);
     }, [selectedDate, user.username]);
 
-    const loadData = (date) => {
+    const loadData = async (date) => {
         if (!user?.username) return;
 
+        setLoading(true);
         // Clé de stockage: rapports-quotidiens:SERVICE:DATE
         const key = `rapports-quotidiens:${user.username}:${date}`;
-        const savedReport = storage.get(key);
+        // Note: storage.get est async maintenant
+        const savedReport = await storage.get(key);
 
         if (savedReport) {
             setFormData(savedReport.data || {});
@@ -48,6 +50,7 @@ const DailyEntryPage = () => {
             setTraceability({ agentName: '', teamMembers: '' });
         }
         setSuccess(false);
+        setLoading(false);
     };
 
     const handleSave = async () => {
@@ -72,7 +75,7 @@ const DailyEntryPage = () => {
                 createdAt: new Date().toISOString(), // Devrait être conservé si update, simplifié ici
             };
 
-            const successSave = storage.set(key, report);
+            const successSave = await storage.set(key, report);
 
             if (successSave) {
                 setSuccess(true);

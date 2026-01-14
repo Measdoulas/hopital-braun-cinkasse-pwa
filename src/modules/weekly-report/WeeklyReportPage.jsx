@@ -23,12 +23,12 @@ const WeeklyReportPage = () => {
     // S'assurer que le serviceId est correct (user.username ou user.serviceId selon implémentation)
     const serviceId = user?.username;
 
-    const handleGenerate = () => {
+    const handleGenerate = async () => {
         if (!serviceId) return;
 
         setLoading(true);
         try {
-            const compiled = compileWeeklyReport(serviceId, selectedDate);
+            const compiled = await compileWeeklyReport(serviceId, selectedDate);
             setReportData(compiled);
             setPeriod({
                 start: compiled.startDate,
@@ -64,7 +64,7 @@ const WeeklyReportPage = () => {
                 dailyReportsCount: reportData.dailyReportsCount
             };
 
-            const saved = storage.set(key, reportToSave);
+            const saved = await storage.set(key, reportToSave);
             if (saved) {
                 setSuccess(true);
                 setTimeout(() => setSuccess(false), 3000);

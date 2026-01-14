@@ -1,12 +1,23 @@
+import { SupabaseStorageService } from './SupabaseStorageService';
+
 /**
- * Service de stockage pour la persistance des données via localStorage.
- * Implémente une API similaire à celle décrite dans le cahier des charges.
+ * Service de stockage - FAÇADE ASYNCHRONE VERS SUPABASE
+ * 
+ * MIGRATION SUPABASE :
+ * Ce service remplace l'ancien stockage localStorage synchrone.
+ * 
+ * ⚠️ ATTENTION : Toutes les méthodes sont désormais ASYNCHRONES.
+ * Il faut utiliser `await` pour chaque appel.
+ * 
+ * Cette façade permet de conserver une compatibilité partielle basée sur les clés
+ * (ex: 'rapports-journaliers:...') tout en redirigeant vers les tables SQL.
  */
-
-const APP_PREFIX = 'hbc_app_';
-
 export class StorageService {
     static instance = null;
+
+    constructor() {
+        this.supabaseService = SupabaseStorageService.getInstance();
+    }
 
     static getInstance() {
         if (!StorageService.instance) {
@@ -14,113 +25,108 @@ export class StorageService {
         }
         return StorageService.instance;
     }
+
     /**
-     * Récupère une valeur du stockage.
-     * @param {string} key - La clé de l'élément.
-     * @returns {any|null} La valeur parsée ou null si non trouvée.
+     * Récupère une valeur (Async)
+     * Parse la clé pour déterminer quelle table Supabase interroger.
      */
-    get(key) {
-        try {
-            const item = localStorage.getItem(APP_PREFIX + key);
-            return item ? JSON.parse(item) : null;
-        } catch (error) {
-            console.error(`Erreur lors de la lecture de la clé ${key}:`, error);
+    async get(key) {
+        // 1. Rapports Journaliers : rapports-journaliers:serviceId:YYYY-MM-DD
+        if (key.startsWith('rapports-journaliers:')) {
+            const parts = key.split(':');
+            if (parts.length === 3) {
+                const [_, serviceId, date] = parts;
+                return await this.supabaseService.getDailyReport(serviceId, date);
+            }
+        }
+
+        // 2. Rapports Hebdo : rapports-hebdo:serviceId:YYYY-Wnum
+        // Clé legacy: rapports-hebdo:gyneco:2026-1
+        if (key.startsWith('rapports-hebdo:')) {
+            const parts = key.split(':');
+            if (parts.length === 3) {
+                // ex: 2026-1
+                const [_, serviceId, periodStr] = parts;
+                const [year, week] = periodStr.split('-');
+
+                // On utilise getWeeklyReports avec filtre car pas de getSingle par défaut encore
+                // TODO: Ajouter getSingleWeeklyReport dans SupabaseStorageService pour optimiser
+                const reports = await this.supabaseService.getWeeklyReports();
+                return reports.find(r => r.serviceId === serviceId && r.year == year && r.weekNumber == week) || null;
+            }
+        }
+
+        // 3. Config (Table config ou localStorage fallback ?)
+        // Pour l'instant on laisse null ou on implémente une table config
+        if (key === 'config-generale') {
+            console.warn("Config générale non encore migrée en base.");
             return null;
         }
+
+        console.warn(`Clé non gérée par SupabaseStorageService: ${key}`);
+        return null;
     }
 
     /**
-     * Enregistre une valeur dans le stockage.
-     * @param {string} key - La clé de l'élément.
-     * @param {any} value - La valeur à stocker.
-     * @returns {boolean} True si succès, False sinon.
+     * Enregistre une valeur (Async)
      */
-    set(key, value) {
-        try {
-            const serializedValue = JSON.stringify(value);
-            localStorage.setItem(APP_PREFIX + key, serializedValue);
-            return true;
-        } catch (error) {
-            console.error(`Erreur lors de l'écriture de la clé ${key}:`, error);
-            return false;
-        }
-    }
+    async set(key, value) {
+        // 1. Rapports Journaliers
+        if (key.startsWith('rapports-journaliers:')) {
+            const parts = key.split(':');
+            if (parts.length === 3) {
+                const [_, serviceId, date] = parts;
+                // value contient l'objet complet, on suppose que cela correspond au 'data' du rapport
+                // Ou si value est l'objet rapport complet : { serviceId, date, data: {...} }
+                // L'ancien système stockait tout l'objet.
+                // Supabase attend (serviceId, date, reportData)
 
-    /**
-     * Supprime une valeur du stockage.
-     * @param {string} key - La clé de l'élément à supprimer.
-     */
-    remove(key) {
-        try {
-            localStorage.removeItem(APP_PREFIX + key);
-        } catch (error) {
-            console.error(`Erreur lors de la suppression de la clé ${key}:`, error);
-        }
-    }
-
-    /**
-     * Liste les éléments dont la clé commence par un préfixe donné.
-     * @param {string} prefix - Le préfixe à rechercher.
-     * @returns {Array<{key: string, value: any}>} Liste des paires clé/valeur trouvées.
-     */
-    list(prefix = '') {
-        try {
-            const results = [];
-            const fullPrefix = APP_PREFIX + prefix;
-
-            for (let i = 0; i < localStorage.length; i++) {
-                const key = localStorage.key(i);
-                if (key && key.startsWith(fullPrefix)) {
-                    const value = this.get(key.substring(APP_PREFIX.length));
-                    results.push({
-                        key: key.substring(APP_PREFIX.length),
-                        value
-                    });
-                }
+                const reportData = value.data || value;
+                return await this.supabaseService.saveDailyReport(serviceId, date, reportData);
             }
-            return results;
-        } catch (error) {
-            console.error(`Erreur lors du listage avec le préfixe ${prefix}:`, error);
-            return [];
         }
+
+        // 2. Rapports Hebdo
+        if (key.startsWith('rapports-hebdo:')) {
+            // value est l'objet rapport complet compilé
+            return await this.supabaseService.saveWeeklyReport(value);
+        }
+
+        console.warn(`Écriture non gérée pour la clé: ${key}`);
+        return false;
     }
 
     /**
-     * Récupère toutes les clés du stockage (sans préfixe app)
-     * @returns {string[]} Liste des clés
+     * Suppression (Async)
+     */
+    async remove(key) {
+        console.warn('Remove non implémenté pour Supabase (Soft delete recommandé)');
+        // TODO: Implémenter delete si nécessaire
+    }
+
+    /**
+     * Listage par préfixe (Async)
+     * Très inefficace avec Supabase si on fetch tout. 
+     * Il vaut mieux utiliser des méthodes spécifiques (getReportsByService...)
+     */
+    async list(prefix = '') {
+        console.warn("⚠️ Utilisation de list() déconseillée avec Supabase. Utilisez des méthodes spécifiques.");
+
+        if (prefix.startsWith('rapports-hebdo')) {
+            const reports = await this.supabaseService.getWeeklyReports();
+            // Filtrage JS temporaire
+            return reports.map(r => ({ key: r._key, value: r }));
+        }
+
+        return [];
+    }
+
+    /**
+     * Legacy method - try to avoid using it
      */
     getAllKeys() {
-        try {
-            const keys = [];
-            for (let i = 0; i < localStorage.length; i++) {
-                const key = localStorage.key(i);
-                if (key && key.startsWith(APP_PREFIX)) {
-                    keys.push(key.substring(APP_PREFIX.length));
-                }
-            }
-            return keys;
-        } catch (error) {
-            console.error("Erreur getAllKeys:", error);
-            return [];
-        }
-    }
-
-    /**
-     * Vide tout le stockage de l'application (utile pour le debug/reset).
-     */
-    clear() {
-        try {
-            const keysToRemove = [];
-            for (let i = 0; i < localStorage.length; i++) {
-                const key = localStorage.key(i);
-                if (key && key.startsWith(APP_PREFIX)) {
-                    keysToRemove.push(key);
-                }
-            }
-            keysToRemove.forEach(key => localStorage.removeItem(key));
-        } catch (error) {
-            console.error("Erreur lors du nettoyage du stockage:", error);
-        }
+        console.error("getAllKeys ne peut plus être utilisé de manière synchrone ni efficace avec Supabase.");
+        return [];
     }
 }
 

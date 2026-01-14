@@ -16,10 +16,10 @@ const DashboardPage = () => {
 
     useEffect(() => {
         if (user) {
-            const loadStats = () => {
+            const loadStats = async () => {
                 setLoading(true);
                 try {
-                    const data = dashboardService.getDashboardStats(user);
+                    const data = await dashboardService.getDashboardStats(user);
                     setStats(data);
                 } catch (error) {
                     console.error("Erreur chargement dashboard:", error);

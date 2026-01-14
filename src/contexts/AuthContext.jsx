@@ -1,6 +1,5 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
-import { storage } from '../services/storage';
-import { verifyPassword } from '../services/auth';
+import { supabase } from '../services/supabase';
 
 const AuthContext = createContext(null);
 
@@ -9,55 +8,84 @@ export const AuthProvider = ({ children }) => {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        // Tentative de restauration de session au chargement
-        const storedUser = storage.get('current_session');
-        if (storedUser) {
-            setUser(storedUser);
-        }
-        setLoading(false);
+        // Initial session check
+        const checkSession = async () => {
+            try {
+                const { data: { session } } = await supabase.auth.getSession();
+                if (session?.user) {
+                    setUser(mapSupabaseUser(session.user));
+                } else {
+                    setUser(null);
+                }
+            } catch (error) {
+                console.error('Session check error:', error);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        checkSession();
+
+        // Listen for auth changes
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+            if (session?.user) {
+                setUser(mapSupabaseUser(session.user));
+                setLoading(false);
+            } else {
+                setUser(null);
+                setLoading(false);
+            }
+        });
+
+        return () => subscription.unsubscribe();
     }, []);
+
+    // Helper to map Supabase user to App user structure
+    const mapSupabaseUser = (sbUser) => {
+        const metadata = sbUser.user_metadata || {};
+        return {
+            id: sbUser.id,
+            email: sbUser.email,
+            username: metadata.username || sbUser.email.split('@')[0],
+            role: metadata.role || 'service', // Default or from metadata
+            serviceId: metadata.serviceId,
+            serviceName: metadata.serviceName,
+            isActive: true
+        };
+    };
 
     const login = async (username, password) => {
         try {
-            // Récupérer tous les utilisateurs
-            const users = storage.get('users') || [];
-            const foundUser = users.find(u => u.username === username);
+            // We use username as email prefix for this app
+            const email = `${username}@hopital-braun.com`;
 
-            if (!foundUser) {
-                return { success: false, error: 'Identifiant incorrect' };
+            const { data, error } = await supabase.auth.signInWithPassword({
+                email,
+                password
+            });
+
+            if (error) {
+                console.error('Login error:', error);
+                return { success: false, error: 'Identifiant ou mot de passe incorrect' };
             }
 
-            const isValid = await verifyPassword(password, foundUser.passwordHash);
-            if (!isValid) {
-                return { success: false, error: 'Mot de passe incorrect' };
-            }
-
-            if (!foundUser.isActive) {
-                return { success: false, error: 'Ce compte a été désactivé' };
-            }
-
-            // Création de session (on exclut le hash du mot de passe de l'objet session)
-            const { passwordHash, ...userSession } = foundUser;
-
-            // Mise à jour date de dernière connexion
-            foundUser.lastLogin = new Date().toISOString();
-            const updatedUsers = users.map(u => u.id === foundUser.id ? foundUser : u);
-            storage.set('users', updatedUsers);
-
-            // Sauvegarde session
-            setUser(userSession);
-            storage.set('current_session', userSession);
-
+            // User is set via onAuthStateChange
             return { success: true };
         } catch (error) {
-            console.error('Erreur login:', error);
+            console.error('Unexpected login error:', error);
             return { success: false, error: 'Erreur technique lors de la connexion' };
         }
     };
 
-    const logout = () => {
-        setUser(null);
-        storage.remove('current_session');
+    const logout = async () => {
+        try {
+            await supabase.auth.signOut();
+            setUser(null);
+            // LocalStorage cleaning if needed for mixed mode artifacts
+            // localStorage.removeItem('hbc_app_current_session');
+        } catch (error) {
+            console.error('Logout error:', error);
+        }
     };
 
     return (

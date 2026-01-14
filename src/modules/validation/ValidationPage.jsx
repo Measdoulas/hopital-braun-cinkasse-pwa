@@ -24,21 +24,18 @@ const ValidationPage = () => {
         loadReports();
     }, []);
 
-    const loadReports = () => {
+    const loadReports = async () => {
         setLoading(true);
         const storage = StorageService.getInstance();
-        const allKeys = storage.getAllKeys();
 
-        // Filtrer les clés des rapports hebdomadaires
-        const reportKeys = allKeys.filter(key => key.startsWith('rapports-hebdo:'));
+        // storage.list est maintenant async et retourne { key, value }
+        // On cible spécifiquement les rapports hebdos
+        const loadedReportsKeyValues = await storage.list('rapports-hebdo:');
 
-        const loadedReports = reportKeys.map(key => {
-            const report = storage.get(key);
-            return {
-                ...report,
-                _key: key
-            };
-        });
+        const loadedReports = loadedReportsKeyValues.map(item => ({
+            ...item.value,
+            _key: item.key
+        }));
 
         // Logique de filtrage hiérarchique
         const filteredReports = loadedReports.filter(report => {
@@ -72,7 +69,7 @@ const ValidationPage = () => {
 
     const handleValidate = async (reportKey) => {
         const storage = StorageService.getInstance();
-        const report = storage.get(reportKey);
+        const report = await storage.get(reportKey);
 
         if (!report) return;
 
@@ -89,7 +86,7 @@ const ValidationPage = () => {
         if (note) report.validationNote = note;
         report.validatedBy = user.username;
 
-        storage.set(reportKey, report);
+        await storage.set(reportKey, report);
 
         // Mise à jour locale
         setReports(prev => prev.map(r =>
@@ -99,16 +96,16 @@ const ValidationPage = () => {
         setSelectedReport(null);
     };
 
-    const handleReject = (reportKey, reason) => {
+    const handleReject = async (reportKey, reason) => {
         const storage = StorageService.getInstance();
-        const report = storage.get(reportKey);
+        const report = await storage.get(reportKey);
 
         if (report) {
             report.status = REPORT_STATUS.REJECTED;
             report.rejectedAt = new Date().toISOString();
             report.rejectedBy = user.username;
             report.rejectionReason = reason || 'Non spécifié';
-            storage.set(reportKey, report);
+            await storage.set(reportKey, report);
 
             // Mise à jour locale
             setReports(prev => prev.map(r =>

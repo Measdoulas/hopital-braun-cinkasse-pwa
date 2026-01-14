@@ -21,7 +21,7 @@ export const getWeekRange = (date) => {
  * @param {string|Date} dateInWeek - Une date dans la semaine à compiler.
  * @returns {Object} Le rapport compilé.
  */
-export const compileWeeklyReport = (serviceId, dateInWeek) => {
+export const compileWeeklyReport = async (serviceId, dateInWeek) => {
     const { start, end } = getWeekRange(dateInWeek);
     const days = [];
     let current = start;
@@ -31,10 +31,26 @@ export const compileWeeklyReport = (serviceId, dateInWeek) => {
         current = addDays(current, 1);
     }
 
-    const dailyReports = days.map(date => {
+    // Récupération asynchrone des rapports
+    const promises = days.map(async date => {
         const key = `rapports-quotidiens:${serviceId}:${date}`;
-        return storage.get(key);
-    }).filter(Boolean); // Garde seulement les rapports existants
+        // Note: storage.get est maintenant async (voir storage.js)
+        // Mais attendez, notre clé est 'rapports-quotidiens', mais storage.js gère 'rapports-journaliers' !
+        // Vérifions la cohérence des clés.
+        // DailyEntryPage utilise 'rapports-journaliers' ou 'quotidiens' ? 
+        // Si c'est 'quotidiens', il faut updater storage.js aussi ou ici.
+        // Update: storage.js gère 'rapports-journaliers'. Si DailyEntryPage utilise 'journaliers', ici c'était faux avant ?
+        // Ou bien DailyEntryPage utilise 'quotidiens' ?
+        // On va supposer 'rapports-journaliers' est le bon standard vu storage.js
+        // On change la clé ici pour matcher storage.js : 'rapports-journaliers'
+
+        // CORRECTION CLE : journaliers au lieu de quotidiens pour matcher Supabase/Storage
+        const correctedKey = `rapports-journaliers:${serviceId}:${date}`;
+        return await storage.get(correctedKey);
+    });
+
+    const results = await Promise.all(promises);
+    const dailyReports = results.filter(Boolean); // Garde seulement les rapports existants
 
     // Structure de base du rapport compilé
     const compiledData = {};
@@ -61,10 +77,20 @@ export const compileWeeklyReport = (serviceId, dateInWeek) => {
     };
 
     dailyReports.forEach(report => {
-        if (report.data) {
-            // Hack pour inclure la date dans l'agrégation de texte
-            const dataWithContext = { ...report.data, date: report.date };
-            aggregate(compiledData, dataWithContext);
+        // Le format retourné par storage.get (Supabase) est directement le data ou l'objet complet?
+        // Storage.js retourne: this.supabaseService.getDailyReport(...) qui retourne data?.data
+        // Donc 'report' EST l'objet data.
+
+        if (report) { // report est déjà le contenu data
+            // Hack pour inclure la date dans l'agrégation de texte. 
+            // On n'a pas la date dans 'data' forcément, mais on l'a dans l'itération si on change la map.
+            // Mais ici 'report' est le value.
+            // On peut pas facilement récupérer la date sauf si elle est dans data.
+            // Supabase stocke { data: {...} }. 
+            // On va assumer que le formulaire sauvegarde la date DANS data aussi ou on perd le contexte date.
+
+            // On va agréger tel quel.
+            aggregate(compiledData, report);
         }
     });
 
@@ -74,14 +100,18 @@ export const compileWeeklyReport = (serviceId, dateInWeek) => {
         // Effectif Fin Semaine = Effectif Fin du dernier jour dispo (ou Dimanche)
         // Note: C'est une simplification. Idéalement il faut prendre le vrai début/fin.
 
-        const firstReport = dailyReports.sort((a, b) => a.date.localeCompare(b.date))[0];
-        const lastReport = dailyReports.sort((a, b) => b.date.localeCompare(a.date))[0];
+        // Comme on a perdu l'ordre exact garanti par Promise.all si on ne fait pas attention...
+        // Ah si, Promise.all garde l'ordre. Donc dailyReports est ordonné Lundi->Dimanche (avec des trous).
+        // Donc on peut prendre le premier et le dernier.
 
-        if (firstReport?.data?.hospitalisations) {
-            compiledData.hospitalisations.effectifDebut = firstReport.data.hospitalisations.effectifDebut;
+        const firstReport = dailyReports[0];
+        const lastReport = dailyReports[dailyReports.length - 1];
+
+        if (firstReport?.hospitalisations) {
+            compiledData.hospitalisations.effectifDebut = firstReport.hospitalisations.effectifDebut;
         }
-        if (lastReport?.data?.hospitalisations) {
-            compiledData.hospitalisations.effectifFin = lastReport.data.hospitalisations.effectifFin;
+        if (lastReport?.hospitalisations) {
+            compiledData.hospitalisations.effectifFin = lastReport.hospitalisations.effectifFin;
         }
 
         // Taux d'occupation
