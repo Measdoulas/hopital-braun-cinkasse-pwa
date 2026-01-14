@@ -31,12 +31,19 @@ export class StorageService {
      * Parse la clé pour déterminer quelle table Supabase interroger.
      */
     async get(key) {
-        // 1. Rapports Journaliers : rapports-journaliers:serviceId:YYYY-MM-DD
+        // 1. Rapports Journaliers : rapports-journaliers:serviceId:YYYY-MM-DD ou rapports-journaliers:serviceId:YYYY-MM-DD_YYYY-MM-DD
         if (key.startsWith('rapports-journaliers:')) {
             const parts = key.split(':');
             if (parts.length === 3) {
-                const [_, serviceId, date] = parts;
-                return await this.supabaseService.getDailyReport(serviceId, date);
+                const [_, serviceId, dateStr] = parts;
+
+                // Vérifier si la date contient une période (date_dateFin)
+                if (dateStr.includes('_')) {
+                    const [date, dateFin] = dateStr.split('_');
+                    return await this.supabaseService.getDailyReport(serviceId, date, dateFin);
+                } else {
+                    return await this.supabaseService.getDailyReport(serviceId, dateStr);
+                }
             }
         }
 
@@ -75,14 +82,19 @@ export class StorageService {
         if (key.startsWith('rapports-journaliers:')) {
             const parts = key.split(':');
             if (parts.length === 3) {
-                const [_, serviceId, date] = parts;
-                // value contient l'objet complet, on suppose que cela correspond au 'data' du rapport
-                // Ou si value est l'objet rapport complet : { serviceId, date, data: {...} }
-                // L'ancien système stockait tout l'objet.
-                // Supabase attend (serviceId, date, reportData)
+                const [_, serviceId, dateStr] = parts;
+
+                // Extraire date et dateFin du dateStr ou de value
+                let date, dateFin;
+                if (dateStr.includes('_')) {
+                    [date, dateFin] = dateStr.split('_');
+                } else {
+                    date = dateStr;
+                    dateFin = value.dateFin || null; // Lire depuis value si disponible
+                }
 
                 const reportData = value.data || value;
-                return await this.supabaseService.saveDailyReport(serviceId, date, reportData);
+                return await this.supabaseService.saveDailyReport(serviceId, date, reportData, dateFin);
             }
         }
 

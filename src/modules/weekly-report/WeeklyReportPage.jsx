@@ -4,7 +4,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { storage } from '../../services/storage';
 import { compileWeeklyReport, getWeekRange } from '../../utils/reports';
 import { generateId } from '../../utils/ids';
-import { REPORT_STATUS } from '../../utils/data-models';
+import { REPORT_STATUS, ROLES } from '../../utils/data-models';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Alert } from '../../components/ui/Alert';
@@ -78,8 +78,17 @@ const WeeklyReportPage = () => {
         }
     };
 
+    // Chef de Service = Mode lecture seule
+    const isReadOnly = user.role === ROLES.CHEF_SERVICE;
+
     return (
-        <div className="space-y-6 max-w-5xl mx-auto">
+        <div className="space-y-6 max-w-4xl mx-auto">
+            {isReadOnly && (
+                <Alert type="info">
+                    <strong>Mode Consultation</strong> - En tant que Chef de Service, vous pouvez consulter les rapports hebdomadaires mais pas en générer de nouveaux.
+                </Alert>
+            )}
+
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
                     <h1 className="text-2xl font-bold text-neutral-darkest">Rapport Hebdomadaire</h1>
@@ -105,10 +114,12 @@ const WeeklyReportPage = () => {
                                 />
                             </div>
                         </div>
-                        <Button onClick={handleGenerate} isLoading={loading}>
-                            <FileText className="mr-2 h-4 w-4" />
-                            Générer Prévisualisation
-                        </Button>
+                        {!isReadOnly && (
+                            <Button onClick={handleGenerate} isLoading={loading}>
+                                <FileText className="mr-2 h-4 w-4" />
+                                Générer Prévisualisation
+                            </Button>
+                        )}
                     </div>
                 </CardContent>
             </Card>
@@ -125,17 +136,6 @@ const WeeklyReportPage = () => {
                                 Basé sur {reportData.dailyReportsCount} rapports quotidiens trouvés.
                             </p>
                         </div>
-                        {!success ? (
-                            <Button onClick={handleSubmit} variant="primary" isLoading={loading}>
-                                <CheckCircle className="mr-2 h-4 w-4" />
-                                Soumettre à la Direction
-                            </Button>
-                        ) : (
-                            <Button variant="secondary" disabled className="text-green-600 border-green-200 bg-green-50">
-                                <CheckCircle className="mr-2 h-4 w-4" />
-                                Soumis avec succès !
-                            </Button>
-                        )}
                     </CardHeader>
                     <CardContent>
                         {error && <Alert variant="error" className="mb-4">{error}</Alert>}

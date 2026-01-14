@@ -19,16 +19,23 @@ export class SupabaseStorageService {
     /**
      * Récupère un rapport quotidien
      * @param {string} serviceId 
-     * @param {string} date (YYYY-MM-DD)
+     * @param {string} date (YYYY-MM-DD) - Date de début
+     * @param {string} dateFin (YYYY-MM-DD) - Date de fin (optionnel)
      */
-    async getDailyReport(serviceId, date) {
+    async getDailyReport(serviceId, date, dateFin = null) {
         try {
-            const { data, error } = await supabase
+            let query = supabase
                 .from('daily_reports')
-                .select('data')
+                .select('*')
                 .eq('service_id', serviceId)
-                .eq('date', date)
-                .single();
+                .eq('date', date);
+
+            // Si dateFin est fourni, on filtre aussi par date_fin
+            if (dateFin) {
+                query = query.eq('date_fin', dateFin);
+            }
+
+            const { data, error } = await query.single();
 
             if (error) {
                 if (error.code === 'PGRST116') return null; // Not found
@@ -36,7 +43,13 @@ export class SupabaseStorageService {
                 throw error;
             }
 
-            return data?.data || null;
+            // Retourner l'objet complet avec date_fin
+            return {
+                serviceId: data.service_id,
+                date: data.date,
+                dateFin: data.date_fin,
+                data: data.report_data
+            };
         } catch (error) {
             console.error('Error fetching daily report:', error);
             return null;
@@ -45,19 +58,33 @@ export class SupabaseStorageService {
 
     /**
      * Sauvegarde un rapport quotidien
+     * @param {string} serviceId
+     * @param {string} date - Date de début
+     * @param {object} reportData - Données du rapport
+     * @param {string} dateFin - Date de fin (optionnel, pour gardes 24h)
      */
-    async saveDailyReport(serviceId, date, reportData) {
+    async saveDailyReport(serviceId, date, reportData, dateFin = null) {
         try {
-            const { error } = await supabase
-                .from('daily_reports')
-                .upsert({
-                    service_id: serviceId,
-                    date: date,
-                    data: reportData,
-                    updated_at: new Date().toISOString()
-                }, { onConflict: 'service_id,date' });
+            const payload = {
+                service_id: serviceId,
+                date: date,
+                date_fin: dateFin || date, // Si pas de fin, fin = début (rétrocompat)
+                report_data: reportData
+            };
 
-            if (error) throw error;
+            const { data, error } = await supabase
+                .from('daily_reports')
+                .upsert(payload, {
+                    onConflict: 'service_id,date,date_fin'
+                })
+                .select()
+                .single();
+
+            if (error) {
+                console.error('Supabase save error:', error);
+                throw error;
+            }
+
             return true;
         } catch (error) {
             console.error('Error saving daily report:', error);

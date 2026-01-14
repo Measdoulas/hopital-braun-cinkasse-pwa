@@ -26,19 +26,19 @@ const Sidebar = ({ className, onClose }) => {
                 to: '/',
                 icon: LayoutDashboard,
                 label: 'Tableau de bord',
-                roles: [ROLES.SERVICE, ROLES.DIRECTION, ROLES.ADMIN]
+                roles: [ROLES.SERVICE, ROLES.CHEF_SERVICE, ROLES.DIRECTION, ROLES.ADMIN]
             },
             {
                 to: '/saisie',
                 icon: FileEdit,
-                label: 'Saisie du jour',
-                roles: [ROLES.SERVICE]
+                label: 'Rapport du jour',
+                roles: [ROLES.SERVICE, ROLES.CHEF_SERVICE]
             },
             {
                 to: '/rapports',
                 icon: FileText,
                 label: 'Rapports Hebdo',
-                roles: [ROLES.SERVICE]
+                roles: [ROLES.SERVICE, ROLES.CHEF_SERVICE]
             },
             {
                 to: '/validation',
@@ -50,7 +50,7 @@ const Sidebar = ({ className, onClose }) => {
                 to: '/historique',
                 icon: History,
                 label: 'Historique',
-                roles: [ROLES.SERVICE, ROLES.DIRECTION, ROLES.ADMIN]
+                roles: [ROLES.SERVICE, ROLES.CHEF_SERVICE, ROLES.DIRECTION, ROLES.ADMIN]
             },
             {
                 to: '/statistiques',

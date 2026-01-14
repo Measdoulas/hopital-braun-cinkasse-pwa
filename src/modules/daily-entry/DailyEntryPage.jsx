@@ -10,11 +10,12 @@ import { Input } from '../../components/ui/Input';
 import { Card, CardContent } from '../../components/ui/Card';
 import { Calendar, Save, CheckCircle } from 'lucide-react';
 import ServiceForm from './forms/ServiceForm';
-import { SERVICES } from '../../utils/data-models';
+import { SERVICES, ROLES } from '../../utils/data-models';
 
 const DailyEntryPage = () => {
     const { user } = useAuth();
     const [selectedDate, setSelectedDate] = useState(format(new Date(), 'yyyy-MM-dd'));
+    const [selectedDateFin, setSelectedDateFin] = useState(format(new Date(), 'yyyy-MM-dd'));
     const [formData, setFormData] = useState({});
     const [traceability, setTraceability] = useState({
         agentName: '',
@@ -33,8 +34,10 @@ const DailyEntryPage = () => {
         if (!user?.username) return;
 
         setLoading(true);
-        // Clé de stockage: rapports-quotidiens:SERVICE:DATE
-        const key = `rapports-quotidiens:${user.username}:${date}`;
+        // Clé de stockage: rapports-journaliers:SERVICE:DATE ou rapports-journaliers:SERVICE:DATE_DATEFIN
+        const key = selectedDateFin && selectedDateFin !== date
+            ? `rapports-journaliers:${user.username}:${date}_${selectedDateFin}`
+            : `rapports-journaliers:${user.username}:${date}`;
         // Note: storage.get est async maintenant
         const savedReport = await storage.get(key);
 
@@ -44,6 +47,10 @@ const DailyEntryPage = () => {
                 agentName: savedReport.agentSaisissant || '',
                 teamMembers: (savedReport.equipeGarde || []).join(', ') || ''
             });
+            // Charger dateFin si disponible
+            if (savedReport.dateFin && savedReport.dateFin !== savedReport.date) {
+                setSelectedDateFin(savedReport.dateFin);
+            }
         } else {
             // Nouvelle saisie
             setFormData({});
@@ -59,23 +66,34 @@ const DailyEntryPage = () => {
             return;
         }
 
+        // Validation période
+        if (selectedDateFin < selectedDate) {
+            setError("La date de fin doit être >= à la date de début");
+            return;
+        }
+
         setLoading(true);
         setError('');
 
         try {
-            const key = `rapports-quotidiens:${user.username}:${selectedDate}`;
-            const report = {
-                id: generateId(),
+            const reportToSave = {
                 serviceId: user.username,
+                serviceName: user.serviceName, // Nouvelle propriété
                 date: selectedDate,
-                agentSaisissant: traceability.agentName,
-                equipeGarde: traceability.teamMembers.split(',').map(s => s.trim()).filter(Boolean),
-                heureSaisie: new Date().toISOString(),
+                dateFin: selectedDateFin, // Nouvelle propriété
                 data: formData,
-                createdAt: new Date().toISOString(), // Devrait être conservé si update, simplifié ici
+                agentSaisissant: traceability.agentName,
+                equipeGarde: traceability.teamMembers.split(',').map(m => m.trim()).filter(Boolean),
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString()
             };
 
-            const successSave = await storage.set(key, report);
+            // Clé incluant la période si nécessaire
+            const key = selectedDateFin && selectedDateFin !== selectedDate
+                ? `rapports-journaliers:${user.username}:${selectedDate}_${selectedDateFin}`
+                : `rapports-journaliers:${user.username}:${selectedDate}`;
+
+            const successSave = await storage.set(key, reportToSave);
 
             if (successSave) {
                 setSuccess(true);
@@ -100,22 +118,51 @@ const DailyEntryPage = () => {
         return service ? service.name : user.serviceName;
     }
 
+    // Chef de Service = Mode lecture seule
+    const isReadOnly = user.role === ROLES.CHEF_SERVICE;
+
     return (
         <div className="space-y-6 max-w-4xl mx-auto">
+            {isReadOnly && (
+                <Alert type="info">
+                    <strong>Mode Consultation</strong> - En tant que Chef de Service, vous pouvez consulter les rapports mais pas les modifier.
+                </Alert>
+            )}
+
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-2xl font-bold text-neutral-darkest">Saisie Journalière</h1>
+                    <h1 className="text-2xl font-bold text-neutral-darkest">Rapport du Jour</h1>
                     <p className="text-neutral-500">{getServiceName()}</p>
                 </div>
 
-                <div className="flex items-center gap-2 bg-white p-2 rounded-lg border shadow-sm">
-                    <Calendar className="text-primary h-5 w-5" />
-                    <input
-                        type="date"
-                        value={selectedDate}
-                        onChange={(e) => setSelectedDate(e.target.value)}
-                        className="border-none focus:ring-0 text-sm"
-                    />
+                <div className="space-y-4 md:space-y-0 md:flex md:items-center md:gap-4">
+                    {/* Date de début */}
+                    <div className="flex items-center gap-2">
+                        <Calendar className="text-slate-500" size={20} />
+                        <label className="text-sm font-medium text-slate-700">Début :</label>
+                        <Input
+                            type="date"
+                            value={selectedDate}
+                            onChange={(e) => setSelectedDate(e.target.value)}
+                            className="w-auto"
+                        />
+                    </div>
+
+                    {/* Date de fin */}
+                    <div className="flex items-center gap-2">
+                        <Calendar className="text-slate-500" size={20} />
+                        <label className="text-sm font-medium text-slate-700">Fin :</label>
+                        <Input
+                            type="date"
+                            value={selectedDateFin}
+                            onChange={(e) => setSelectedDateFin(e.target.value)}
+                            className="w-auto"
+                        />
+                    </div>
+
+                    <p className="text-xs text-slate-500">
+                        Période de garde ({selectedDate === selectedDateFin ? '1 jour' : 'garde 24h'})
+                    </p>
                 </div>
             </div>
 
@@ -128,14 +175,16 @@ const DailyEntryPage = () => {
                                 placeholder="Votre nom complet"
                                 value={traceability.agentName}
                                 onChange={(e) => setTraceability(prev => ({ ...prev, agentName: e.target.value }))}
+                                disabled={isReadOnly}
                             />
                         </div>
                         <div className="space-y-2">
-                            <label className="text-sm font-medium">Équipe de garde</label>
+                            <label className="text-sm font-medium">Équipe de Garde</label>
                             <Input
                                 placeholder="Noms séparés par des virgules"
                                 value={traceability.teamMembers}
                                 onChange={(e) => setTraceability(prev => ({ ...prev, teamMembers: e.target.value }))}
+                                disabled={isReadOnly}
                             />
                         </div>
                     </div>
@@ -161,12 +210,18 @@ const DailyEntryPage = () => {
                         </Alert>
                     )}
 
-                    <div className="flex justify-end pt-4">
-                        <Button onClick={handleSave} isLoading={loading} className="w-full md:w-auto">
-                            <Save className="mr-2 h-4 w-4" />
-                            Enregistrer
-                        </Button>
-                    </div>
+                    {!isReadOnly && (
+                        <div className="flex justify-end pt-4">
+                            <Button
+                                onClick={handleSave}
+                                isLoading={loading}
+                                className="w-full md:w-auto"
+                            >
+                                <Save className="mr-2 h-4 w-4" />
+                                Enregistrer
+                            </Button>
+                        </div>
+                    )}
                 </CardContent>
             </Card>
         </div>
