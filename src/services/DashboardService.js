@@ -1,13 +1,12 @@
-import { storage } from './storage';
+// Note: On importe directement SupabaseStorageService pour accès aux méthodes avancées non exposées par le wrapper
+import { SupabaseStorageService } from './SupabaseStorageService';
 import { ROLES, SERVICES } from '../utils/data-models';
-import { startOfWeek, endOfWeek, subWeeks, format, parseISO, isWithinInterval } from 'date-fns';
+import { startOfWeek, endOfWeek, subWeeks, format, parseISO, startOfMonth, subDays } from 'date-fns';
 import { fr } from 'date-fns/locale';
-
-
 
 export class DashboardService {
     constructor() {
-        this.storage = storage; // StorageService.getInstance()
+        this.storage = SupabaseStorageService.getInstance();
     }
 
     /**
@@ -16,33 +15,45 @@ export class DashboardService {
      */
     async getDashboardStats(user) {
         // 1. Définir le périmètre (Services)
-        let targetServices = [];
-        if (user.role === ROLES.SERVICE) {
-            targetServices = [user.serviceId || user.username];
-        } else {
-            // Direction/Admin : Tous les services
-            targetServices = SERVICES.map(s => s.id);
+        let targetServiceId = null; // null = Tous les services
+        let targetServicesList = SERVICES.map(s => s.id);
+
+        if (user.role === ROLES.SERVICE || user.role === ROLES.CHEF_SERVICE) {
+            targetServiceId = user.serviceId || user.username;
+            targetServicesList = [targetServiceId];
         }
 
-        // 2. Récupérer les rapports pertinents (Daily & Weekly)
-        // Note: _getDailyReports est maintenant async et retourne une Promise
-        const allDailyReports = await this._getDailyReports(targetServices);
+        // 2. Définir les périodes
+        const today = new Date();
+        const startOfCurrentMonth = format(startOfMonth(today), 'yyyy-MM-dd');
+        const startOfLastWeek = format(subDays(today, 7), 'yyyy-MM-dd'); // Pour les trends
+        const todayStr = format(today, 'yyyy-MM-dd');
 
-        // 3. Calculer les KPIs
-        // KPI: Consultations (Entrées du jour / semaine)
-        const consultations = this._calculateConsultations(allDailyReports);
+        // 3. Récupérer les rapports pertinents (Daily & Weekly)
+        // On récupère large pour calculer les trends
+        const reportsLast30Days = await this.storage.getDailyReportsInRange(startOfCurrentMonth, todayStr, targetServiceId);
 
-        // KPI: Hospitalisations
-        const hospitalizations = this._calculateHospitalizations(allDailyReports, targetServices);
+        // 4. Calculer les KPIs
+
+        // KPI: Consultations/Entrées (Mois courant)
+        const consultations = this._calculateConsultations(reportsLast30Days);
+
+        // KPI: Hospitalisations (Dernier état connu ou moyenne)
+        // Pour être précis, il faudrait le dernier rapport de chaque service.
+        // On va prendre le rapport le plus récent pour chaque service.
+        const hospitalizations = this._calculateCurrentHospitalizations(reportsLast30Days, targetServicesList);
 
         // KPI: Taux d'Occupation
-        const occupancy = this._calculateOccupancy(hospitalizations.current, targetServices);
+        const occupancy = this._calculateOccupancy(hospitalizations.current, targetServicesList);
 
-        // KPI: Rapports en attente
-        const pendingReports = await this._countPendingReports(user, targetServices);
+        // KPI: Rapports en attente (Weekly)
+        // On utilise getWeeklyReports qui est déjà capable de fetcher "tout"
+        // Mais on va filtrer en mémoire pour l'instant
+        const recentWeeklyReports = await this.storage.getWeeklyReports();
+        const pendingReports = this._countPendingReports(user, recentWeeklyReports, targetServicesList);
 
-        // Charts: Activité
-        const activityTrend = this._calculateTrend(targetServices);
+        // Charts: Activité (7 derniers jours)
+        const activityTrend = await this._calculateActivityTrend(targetServiceId);
 
         return {
             consultations,
@@ -55,70 +66,50 @@ export class DashboardService {
 
     // --- Helpers ---
 
-    async _getDailyReports(serviceIds) {
-        // Avec Supabase, on ne peut pas lister toutes les clés efficacement via le wrapper
-        // MAIS pour l'instant le wrapper storage.js "simule" via SupabaseStorageService
-        // Le mieux est d'appeler direttamente SupabaseStorageService si possible, ou via storage.list
-        // On va tricher pour la migration progressive:
-        // Supabase ne permet pas de "scanner" comme localStorage.
-
-        // SOLUTION TEMPORAIRE MIGRATION: 
-        // On n'a pas encore de méthode "getAllDailyReports" optimisée.
-        // On va interroger via le storage.list qui a été "warning-ed" mais redirige vers Weekly
-        // Ah, storage.list ne gère QUE Weekly pour l'instant dans notre implémentation précédente.
-
-        // Il faut modifier DashboardService pour ne plus dépendre de "list keys".
-        // On va retourner un tableau vide temporairement pour les DailyReports jusqu'à ce qu'on ait mieux,
-        // OU on implémente un "getRecentDailyReports" dans SupabaseStorageService.
-
-        // Pour ne pas bloquer, on retourne [] car le dashboard ServiceService dépend trop de la structure clé-valeur.
-        // TODO: Migrer _getDailyReports vers une requête Supabase réelle daily_reports avec range dates.
-
-        return [];
-    }
-
     _calculateConsultations(reports) {
-        // Total des entrées sur la période
-        const now = new Date();
-        const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-
         let total = 0;
-
         reports.forEach(r => {
-            const reportDate = parseISO(r.date);
-            if (reportDate >= startOfMonth) {
-                total += (parseInt(r.data?.entrees) || 0);
-            }
+            // On somme les "entrees" (ou consultations si dispo dans data)
+            // Dans le modèle actuel: mouvements.entrees est le KPI clé
+            const entrees = parseInt(r.data?.mouvements?.entrees) || 0;
+            const consult = parseInt(r.data?.consultations?.total) || 0;
+            // Si pas de section consultation explicite, on utilise entrées, sinon on ajoute.
+            // Pour simplifier l'affichage "Activité", on prend entrées hospitalisation + consults externes si dispo
+            total += (entrees + consult);
         });
 
         return {
             value: total,
-            trend: "+0%", // Manque de données historiques
+            trend: "Mois en cours",
             direction: "neutral"
         };
     }
 
-    _calculateHospitalizations(reports, serviceIds) {
-        let current = 0;
-        let capacity = 0;
+    _calculateCurrentHospitalizations(reports, serviceIds) {
+        let currentTotal = 0;
+        let capacityTotal = 0;
 
         serviceIds.forEach(svcId => {
             const def = SERVICES.find(s => s.id === svcId);
             if (def && def.hasBeds) {
-                const totalBeds = def.defaultBeds || 0;
-                capacity += totalBeds;
+                capacityTotal += (def.defaultBeds || 0);
 
-                // Simulation réaliste en attendant vraies données
-                const randomOccupancy = 0.5 + (Math.random() * 0.4);
-                current += Math.floor(totalBeds * randomOccupancy);
+                // Trouver le rapport le plus récent pour ce service
+                const svcReports = reports.filter(r => r.serviceId === svcId);
+                if (svcReports.length > 0) {
+                    // Trier par date desc
+                    svcReports.sort((a, b) => new Date(b.date) - new Date(a.date));
+                    const lastReport = svcReports[0];
+                    currentTotal += (parseInt(lastReport.data?.mouvements?.effectifFin) || 0);
+                }
             }
         });
 
         return {
-            current,
-            capacity,
-            trend: "+2%",
-            direction: "up"
+            current: currentTotal,
+            capacity: capacityTotal,
+            trend: "Temps réel",
+            direction: "neutral"
         };
     }
 
@@ -134,35 +125,33 @@ export class DashboardService {
         if (totalBeds === 0) return { value: "N/A", percent: 0 };
 
         const percent = Math.round((currentPatients / totalBeds) * 100);
+
+        let direction = "neutral";
+        if (percent > 85) direction = "up"; // Tension
+        if (percent < 50) direction = "down"; // Calme
+
         return {
             value: `${percent}%`,
             percent: percent,
-            trend: "-1%",
-            direction: "down"
+            trend: "Occupation",
+            direction: direction
         };
     }
 
-    async _countPendingReports(user, serviceIds) {
-        // Compte les rapports hebdos statut 'pending' via storage.list adapté
-        // storage.list('rapports-hebdo') retourne { key, value } array grâce à notre modif
-
-        const keyValues = await this.storage.list('rapports-hebdo');
+    _countPendingReports(user, allWeeklyReports, targetServiceIds) {
         let count = 0;
 
-        keyValues.forEach(kv => {
-            const report = kv.value;
-            if (serviceIds.includes(report.serviceId)) {
-                // Status mapping: 'pending' = 'en_attente' ou 'transmis_chef'
-                // On vérifie les statuts "à traiter"
-                if (report.status === 'transmis_chef' || report.status === 'en_attente') {
-                    // Si Direction: voit valide_chef
-                    // Si Chef: voit transmis_chef
+        allWeeklyReports.forEach(report => {
+            if (targetServiceIds.includes(report.serviceId)) {
+                // Direction: voit 'valide_chef' (à valider par Direction)
+                // Chef: voit 'transmis_chef' (à valider par Chef - wait, le Chef reçoit du Service)
+                // Le workflow : Service -> (Brouillon) -> Transmis Chef -> Valide Chef -> Valide Direction
 
-                    if (user.role === ROLES.DIRECTION && report.status === 'valide_chef') {
-                        count++;
-                    } else if (user.role === ROLES.CHEF_SERVICE && report.status === 'transmis_chef') {
-                        count++;
-                    }
+                if (user.role === ROLES.DIRECTION && report.status === 'valide_chef') {
+                    count++;
+                } else if (user.role === ROLES.CHEF_SERVICE) {
+                    // Le Chef doit valider les rapports transmis par son équipe
+                    if (report.status === 'transmis_chef') count++;
                 }
             }
         });
@@ -170,25 +159,39 @@ export class DashboardService {
         return count;
     }
 
-    _calculateTrend(serviceIds) {
-        const data = [
-            { name: 'Sem 1', value: 0 },
-            { name: 'Sem 2', value: 0 },
-            { name: 'Sem 3', value: 0 },
-            { name: 'Sem 4', value: 0 },
-            { name: 'Sem 5', value: 0 },
-            { name: 'Sem 6', value: 0 },
-        ];
+    async _calculateActivityTrend(serviceId) {
+        // 7 derniers jours
+        const endDate = new Date();
+        const startDate = subDays(endDate, 6);
 
-        const baseValue = serviceIds.reduce((acc, sid) => {
-            const def = SERVICES.find(s => s.id === sid);
-            return acc + (def?.defaultBeds || 5) * 5;
-        }, 0);
+        const startStr = format(startDate, 'yyyy-MM-dd');
+        const endStr = format(endDate, 'yyyy-MM-dd');
 
-        return data.map(d => ({
-            name: d.name,
-            value: Math.floor(baseValue * (0.8 + Math.random() * 0.4))
-        }));
+        const reports = await this.storage.getDailyReportsInRange(startStr, endStr, serviceId);
+
+        // Initialiser les 7 jours à 0
+        const trendData = [];
+        for (let i = 0; i <= 6; i++) {
+            const d = subDays(endDate, 6 - i);
+            const dStr = format(d, 'yyyy-MM-dd');
+            trendData.push({
+                name: format(d, 'dd/MM'),
+                date: dStr,
+                value: 0
+            });
+        }
+
+        // Remplir avec données
+        reports.forEach(r => {
+            const dayStat = trendData.find(d => d.date === r.date);
+            if (dayStat) {
+                // On somme entrées + consults pour l'activité
+                const val = (parseInt(r.data?.mouvements?.entrees) || 0) + (parseInt(r.data?.consultations?.total) || 0);
+                dayStat.value += val;
+            }
+        });
+
+        return trendData;
     }
 }
 

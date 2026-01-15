@@ -1,163 +1,224 @@
 import React, { useState, useEffect } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '../../components/ui/Card';
-import { StorageService } from '../../services/storage';
-import { SERVICES } from '../../utils/data-models';
-import { BarChart, Bar, LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import { TrendingUp, Users, Activity, BarChart3 } from 'lucide-react';
+import { SupabaseStorageService } from '../../services/SupabaseStorageService';
+import { SERVICES, ROLES } from '../../utils/data-models';
+import { useAuth } from '../../contexts/AuthContext';
+import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { AlertCircle, Users, Activity, BedDouble, Calendar } from 'lucide-react';
+import { format, subDays, startOfMonth, endOfMonth, parseISO } from 'date-fns';
+import { fr } from 'date-fns/locale';
 
 /**
- * StatisticsPage - Vue Statistiques
- * Graphiques et analyses de l'activité hospitalière
+ * StatisticsPage - Tableau de Bord Médical Analytique
+ * Focus: Flux patients, Mortalité, Occupation
  */
 const StatisticsPage = () => {
-    const [stats, setStats] = useState({
-        byService: [],
-        byWeek: [],
-        totalReports: 0,
-        validatedReports: 0
-    });
+    const { user } = useAuth();
     const [loading, setLoading] = useState(true);
+    const [period, setPeriod] = useState({
+        start: format(startOfMonth(new Date()), 'yyyy-MM-dd'),
+        end: format(new Date(), 'yyyy-MM-dd')
+    });
+    const [stats, setStats] = useState({
+        admissions: 0,
+        deces: 0,
+        guerisons: 0,
+        occupationMoyenne: 0,
+        byService: [],
+        trendData: []
+    });
+
+    // Filtre Service : Bloqué pour les chefs, ouvert pour la Direction
+    const canFilterService = user.role === ROLES.DIRECTION || user.role === ROLES.ADMIN;
+    const initialService = (user.role === ROLES.SERVICE || user.role === ROLES.CHEF_SERVICE)
+        ? (user.serviceId || user.username)
+        : 'all';
+    const [selectedService, setSelectedService] = useState(initialService);
 
     useEffect(() => {
-        loadStatistics();
-    }, []);
+        loadMedicalStats();
+    }, [period, selectedService]);
 
-    const loadStatistics = () => {
+    const loadMedicalStats = async () => {
         setLoading(true);
-        const storage = StorageService.getInstance();
-        const allKeys = storage.getAllKeys();
+        const storage = SupabaseStorageService.getInstance();
 
-        // Statistiques par service
-        const serviceStats = {};
-        Object.values(SERVICES).forEach(service => {
-            serviceStats[service.id] = {
-                name: service.name,
-                daily: 0,
-                weekly: 0,
-                total: 0
-            };
+        // 1. Récupérer les rapports sur la période
+        // Si 'all', on passe null pour récupérer tout
+        const serviceFilter = selectedService === 'all' ? null : selectedService;
+        const reports = await storage.getDailyReportsInRange(period.start, period.end, serviceFilter);
+
+        // 2. Agréger les données médicales
+        let totalAdmissions = 0;
+        let totalDeces = 0;
+        let totalGuerisons = 0;
+        let sumOccupancy = 0;
+        let countReports = 0;
+
+        const serviceAggregation = {};
+        const dailyTrend = {};
+
+        // Initialiser aggregation services
+        Object.values(SERVICES).forEach(s => {
+            serviceAggregation[s.id] = { name: s.name, admissions: 0, deces: 0, occupancy: 0, count: 0 };
         });
 
-        // Compter rapports quotidiens
-        const dailyKeys = allKeys.filter(key => key.startsWith('rapports-quotidiens:'));
-        dailyKeys.forEach(key => {
-            const [, serviceId] = key.split(':');
-            if (serviceStats[serviceId]) {
-                serviceStats[serviceId].daily++;
-                serviceStats[serviceId].total++;
+        reports.forEach(r => {
+            const mvts = r.data?.mouvements || {};
+            const admissions = parseInt(mvts.entrees) || 0;
+            const deces = parseInt(mvts.sorties?.deces) || 0;
+            const guerisons = parseInt(mvts.sorties?.aDomicile) || 0;
+            const effectifFin = parseInt(mvts.effectifFin) || 0;
+
+            // Global totals
+            totalAdmissions += admissions;
+            totalDeces += deces;
+            totalGuerisons += guerisons;
+            sumOccupancy += effectifFin;
+            countReports++;
+
+            // Service aggregation
+            if (serviceAggregation[r.serviceId]) {
+                const s = serviceAggregation[r.serviceId];
+                s.admissions += admissions;
+                s.deces += deces;
+                s.occupancy += effectifFin;
+                s.count++;
             }
-        });
 
-        // Compter rapports hebdomadaires
-        const weeklyKeys = allKeys.filter(key => key.startsWith('rapports-hebdo:'));
-        let validatedCount = 0;
-        weeklyKeys.forEach(key => {
-            const report = storage.get(key);
-            if (report) {
-                if (serviceStats[report.serviceId]) {
-                    serviceStats[report.serviceId].weekly++;
-                    serviceStats[report.serviceId].total++;
-                }
-                if (report.status === 'validated') {
-                    validatedCount++;
-                }
+            // Daily trend
+            if (!dailyTrend[r.date]) {
+                dailyTrend[r.date] = { date: r.date, admissions: 0, deces: 0 };
             }
+            dailyTrend[r.date].admissions += admissions;
+            dailyTrend[r.date].deces += deces;
         });
 
-        // Convertir en tableau pour graphiques
-        const byServiceData = Object.values(serviceStats)
-            .filter(s => s.total > 0)
-            .sort((a, b) => b.total - a.total);
+        // Calcul occupation moyenne (approximatif: somme effectifs / nombre de jours de rapport)
+        const avgOccupancy = countReports > 0 ? Math.round(sumOccupancy / countReports) : 0; // C'est une moyenne par rapport, attention si plusieurs services
 
-        // Données par semaine (simulées pour démo)
-        const weekData = [
-            { week: 'S48', consultations: 245, hospitalisations: 89 },
-            { week: 'S49', consultations: 267, hospitalisations: 92 },
-            { week: 'S50', consultations: 289, hospitalisations: 78 },
-            { week: 'S51', consultations: 234, hospitalisations: 85 },
-            { week: 'S52', consultations: 198, hospitalisations: 65 },
-            { week: 'S1', consultations: 312, hospitalisations: 98 },
-        ];
+        // Préparer données graphiques
+        const byServiceData = Object.values(serviceAggregation)
+            .filter(s => s.count > 0 || (selectedService !== 'all' && s.count === 0)) // Garder service vide si sélectionné
+            .map(s => ({
+                ...s,
+                avgOccupancy: s.count > 0 ? Math.round(s.occupancy / s.count) : 0
+            }));
+
+        const trendData = Object.values(dailyTrend).sort((a, b) => new Date(a.date) - new Date(b.date));
 
         setStats({
+            admissions: totalAdmissions,
+            deces: totalDeces,
+            guerisons: totalGuerisons,
+            occupationMoyenne: avgOccupancy,
             byService: byServiceData,
-            byWeek: weekData,
-            totalReports: dailyKeys.length + weeklyKeys.length,
-            validatedReports: validatedCount
+            trendData: trendData
         });
 
         setLoading(false);
     };
 
-    const COLORS = ['#2563EB', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899'];
-
     if (loading) {
-        return (
-            <div className="flex items-center justify-center min-h-96">
-                <div className="text-center space-y-4">
-                    <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto"></div>
-                    <p className="text-slate-600">Chargement des statistiques...</p>
-                </div>
-            </div>
-        );
+        return <div className="p-8 text-center text-slate-500">Chargement des données médicales...</div>;
     }
 
     return (
         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-            {/* Header */}
-            <div>
-                <h1 className="text-3xl font-bold text-slate-900">Statistiques</h1>
-                <p className="text-slate-500 mt-1">Analysez l'activité hospitalière globale</p>
+            {/* Header & Filters */}
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                <div>
+                    <h1 className="text-3xl font-bold text-slate-900">Analyses Médicales</h1>
+                    <p className="text-slate-500">Flux de patients et indicateurs de mortalité</p>
+                </div>
+
+                <div className="flex flex-wrap gap-2">
+                    <div className="flex items-center gap-2 bg-white p-2 border rounded-lg">
+                        <Calendar className="w-4 h-4 text-slate-400" />
+                        <input
+                            type="date"
+                            value={period.start}
+                            onChange={e => setPeriod({ ...period, start: e.target.value })}
+                            className="text-sm border-none p-0 focus:ring-0"
+                        />
+                        <span className="text-slate-400">→</span>
+                        <input
+                            type="date"
+                            value={period.end}
+                            onChange={e => setPeriod({ ...period, end: e.target.value })}
+                            className="text-sm border-none p-0 focus:ring-0"
+                        />
+                    </div>
+
+                    {canFilterService && (
+                        <select
+                            value={selectedService}
+                            onChange={e => setSelectedService(e.target.value)}
+                            className="p-2 border rounded-lg text-sm bg-white"
+                        >
+                            <option value="all">Tous les services</option>
+                            {Object.values(SERVICES).map(s => (
+                                <option key={s.id} value={s.id}>{s.name}</option>
+                            ))}
+                        </select>
+                    )}
+                </div>
             </div>
 
-            {/* KPIs */}
+            {/* KPIs Médicaux */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <Card>
                     <CardContent className="p-6">
-                        <div className="flex items-center justify-between">
+                        <div className="flex justify-between items-start">
                             <div>
-                                <p className="text-sm text-slate-500">Total Rapports</p>
-                                <p className="text-3xl font-bold text-blue-600">{stats.totalReports}</p>
+                                <p className="text-sm font-medium text-slate-500">Admissions Totales</p>
+                                <h3 className="text-3xl font-bold text-blue-600 mt-2">{stats.admissions}</h3>
                             </div>
-                            <BarChart3 className="w-8 h-8 text-blue-500" />
+                            <div className="p-2 bg-blue-50 rounded-lg">
+                                <Users className="w-6 h-6 text-blue-600" />
+                            </div>
                         </div>
                     </CardContent>
                 </Card>
 
                 <Card>
                     <CardContent className="p-6">
-                        <div className="flex items-center justify-between">
+                        <div className="flex justify-between items-start">
                             <div>
-                                <p className="text-sm text-slate-500">Validés</p>
-                                <p className="text-3xl font-bold text-green-600">{stats.validatedReports}</p>
+                                <p className="text-sm font-medium text-slate-500">Décès Hospitaliers</p>
+                                <h3 className="text-3xl font-bold text-red-600 mt-2">{stats.deces}</h3>
                             </div>
-                            <TrendingUp className="w-8 h-8 text-green-500" />
+                            <div className="p-2 bg-red-50 rounded-lg">
+                                <AlertCircle className="w-6 h-6 text-red-600" />
+                            </div>
                         </div>
                     </CardContent>
                 </Card>
 
                 <Card>
                     <CardContent className="p-6">
-                        <div className="flex items-center justify-between">
+                        <div className="flex justify-between items-start">
                             <div>
-                                <p className="text-sm text-slate-500">Services Actifs</p>
-                                <p className="text-3xl font-bold text-purple-600">{stats.byService.length}</p>
+                                <p className="text-sm font-medium text-slate-500">Sorties (Guérison)</p>
+                                <h3 className="text-3xl font-bold text-green-600 mt-2">{stats.guerisons}</h3>
                             </div>
-                            <Users className="w-8 h-8 text-purple-500" />
+                            <div className="p-2 bg-green-50 rounded-lg">
+                                <Activity className="w-6 h-6 text-green-600" />
+                            </div>
                         </div>
                     </CardContent>
                 </Card>
 
                 <Card>
                     <CardContent className="p-6">
-                        <div className="flex items-center justify-between">
+                        <div className="flex justify-between items-start">
                             <div>
-                                <p className="text-sm text-slate-500">Taux Validation</p>
-                                <p className="text-3xl font-bold text-amber-600">
-                                    {stats.totalReports > 0 ? Math.round((stats.validatedReports / stats.totalReports) * 100) : 0}%
-                                </p>
+                                <p className="text-sm font-medium text-slate-500">Occupation Moy. (Lits)</p>
+                                <h3 className="text-3xl font-bold text-purple-600 mt-2">{stats.occupationMoyenne}</h3>
                             </div>
-                            <Activity className="w-8 h-8 text-amber-500" />
+                            <div className="p-2 bg-purple-50 rounded-lg">
+                                <BedDouble className="w-6 h-6 text-purple-600" />
+                            </div>
                         </div>
                     </CardContent>
                 </Card>
@@ -165,113 +226,77 @@ const StatisticsPage = () => {
 
             {/* Graphiques */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {/* Rapports par service */}
                 <Card>
                     <CardHeader>
-                        <CardTitle>Rapports par Service</CardTitle>
+                        <CardTitle>Flux Admissions vs Décès (Tendance)</CardTitle>
                     </CardHeader>
                     <CardContent className="h-[350px]">
                         <ResponsiveContainer width="100%" height="100%">
-                            <BarChart data={stats.byService}>
-                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
-                                <XAxis
-                                    dataKey="name"
-                                    angle={-45}
-                                    textAnchor="end"
-                                    height={80}
-                                    tick={{ fill: '#64748B', fontSize: 12 }}
-                                />
-                                <YAxis tick={{ fill: '#64748B', fontSize: 12 }} />
-                                <Tooltip
-                                    contentStyle={{
-                                        backgroundColor: '#FFF',
-                                        border: 'none',
-                                        borderRadius: '12px',
-                                        boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)'
-                                    }}
-                                />
+                            <LineChart data={stats.trendData}>
+                                <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                                <XAxis dataKey="date" tickFormatter={d => format(parseISO(d), 'dd/MM')} />
+                                <YAxis />
+                                <Tooltip labelFormatter={d => format(parseISO(d), 'dd MMMM yyyy', { locale: fr })} />
                                 <Legend />
-                                <Bar dataKey="daily" fill="#2563EB" name="Quotidiens" radius={[8, 8, 0, 0]} />
-                                <Bar dataKey="weekly" fill="#10B981" name="Hebdomadaires" radius={[8, 8, 0, 0]} />
-                            </BarChart>
-                        </ResponsiveContainer>
-                    </CardContent>
-                </Card>
-
-                {/* Évolution hebdomadaire */}
-                <Card>
-                    <CardHeader>
-                        <CardTitle>Évolution sur 6 Semaines</CardTitle>
-                    </CardHeader>
-                    <CardContent className="h-[350px]">
-                        <ResponsiveContainer width="100%" height="100%">
-                            <LineChart data={stats.byWeek}>
-                                <defs>
-                                    <linearGradient id="colorConsultations" x1="0" y1="0" x2="0" y2="1">
-                                        <stop offset="5%" stopColor="#2563EB" stopOpacity={0.1} />
-                                        <stop offset="95%" stopColor="#2563EB" stopOpacity={0} />
-                                    </linearGradient>
-                                </defs>
-                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
-                                <XAxis dataKey="week" tick={{ fill: '#64748B', fontSize: 12 }} />
-                                <YAxis tick={{ fill: '#64748B', fontSize: 12 }} />
-                                <Tooltip
-                                    contentStyle={{
-                                        backgroundColor: '#FFF',
-                                        border: 'none',
-                                        borderRadius: '12px',
-                                        boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)'
-                                    }}
-                                />
-                                <Legend />
-                                <Line
-                                    type="monotone"
-                                    dataKey="consultations"
-                                    stroke="#2563EB"
-                                    strokeWidth={3}
-                                    dot={{ fill: '#2563EB', r: 4 }}
-                                    name="Consultations"
-                                />
-                                <Line
-                                    type="monotone"
-                                    dataKey="hospitalisations"
-                                    stroke="#10B981"
-                                    strokeWidth={3}
-                                    dot={{ fill: '#10B981', r: 4 }}
-                                    name="Hospitalisations"
-                                />
+                                <Line type="monotone" dataKey="admissions" stroke="#2563EB" name="Admissions" strokeWidth={2} />
+                                <Line type="monotone" dataKey="deces" stroke="#EF4444" name="Décès" strokeWidth={2} />
                             </LineChart>
                         </ResponsiveContainer>
                     </CardContent>
                 </Card>
 
-                {/* Distribution par service (Pie Chart) */}
-                <Card className="lg:col-span-2">
+                <Card>
                     <CardHeader>
-                        <CardTitle>Distribution des Rapports par Service</CardTitle>
+                        <CardTitle>Comparatif par Service</CardTitle>
                     </CardHeader>
                     <CardContent className="h-[350px]">
                         <ResponsiveContainer width="100%" height="100%">
-                            <PieChart>
-                                <Pie
-                                    data={stats.byService}
-                                    dataKey="total"
-                                    nameKey="name"
-                                    cx="50%"
-                                    cy="50%"
-                                    outerRadius={120}
-                                    label={(entry) => `${entry.name}: ${entry.total}`}
-                                >
-                                    {stats.byService.map((entry, index) => (
-                                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                                    ))}
-                                </Pie>
+                            <BarChart data={stats.byService} layout="vertical">
+                                <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} />
+                                <XAxis type="number" />
+                                <YAxis dataKey="name" type="category" width={100} />
                                 <Tooltip />
-                            </PieChart>
+                                <Legend />
+                                <Bar dataKey="admissions" fill="#3B82F6" name="Admissions" stackId="a" />
+                                <Bar dataKey="deces" fill="#EF4444" name="Décès" stackId="a" />
+                            </BarChart>
                         </ResponsiveContainer>
                     </CardContent>
                 </Card>
             </div>
+
+            {/* Tableau Détaillé */}
+            <Card>
+                <CardHeader>
+                    <CardTitle>Détail de l'activité par Service</CardTitle>
+                </CardHeader>
+                <CardContent>
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-sm text-left">
+                            <thead className="text-xs text-slate-500 uppercase bg-slate-50">
+                                <tr>
+                                    <th className="px-6 py-3">Service</th>
+                                    <th className="px-6 py-3 text-right">Admissions</th>
+                                    <th className="px-6 py-3 text-right">Guérisons</th>
+                                    <th className="px-6 py-3 text-right">Décès</th>
+                                    <th className="px-6 py-3 text-right">Occupation Moy.</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {stats.byService.map((s, idx) => (
+                                    <tr key={idx} className="bg-white border-b hover:bg-slate-50">
+                                        <td className="px-6 py-4 font-medium text-slate-900">{s.name}</td>
+                                        <td className="px-6 py-4 text-right">{s.admissions}</td>
+                                        <td className="px-6 py-4 text-right text-green-600">{s.guerisons}</td>
+                                        <td className="px-6 py-4 text-right text-red-600 font-bold">{s.deces}</td>
+                                        <td className="px-6 py-4 text-right">{s.avgOccupancy}</td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                </CardContent>
+            </Card>
         </div>
     );
 };

@@ -92,6 +92,40 @@ export class SupabaseStorageService {
         }
     }
 
+    /**
+     * Récupère les rapports quotidiens sur une période donnée
+     * @param {string} startDate (YYYY-MM-DD)
+     * @param {string} endDate (YYYY-MM-DD)
+     * @param {string|null} serviceId (Optionnel)
+     */
+    async getDailyReportsInRange(startDate, endDate, serviceId = null) {
+        try {
+            let query = supabase
+                .from('daily_reports')
+                .select('*')
+                .gte('date', startDate)
+                .lte('date', endDate);
+
+            if (serviceId) {
+                query = query.eq('service_id', serviceId);
+            }
+
+            const { data, error } = await query;
+
+            if (error) throw error;
+
+            return data.map(row => ({
+                serviceId: row.service_id,
+                date: row.date,
+                dateFin: row.date_fin,
+                data: row.data
+            }));
+        } catch (error) {
+            console.error('Error fetching daily reports in range:', error);
+            return [];
+        }
+    }
+
     // ==================== WEEKLY REPORTS ====================
 
     /**
@@ -146,6 +180,37 @@ export class SupabaseStorageService {
         } catch (error) {
             console.error('Error saving weekly report:', error);
             return false;
+        }
+    }
+
+    /**
+     * Récupère les rapports hebdomadaires sur une période (basé sur submitted_at)
+     */
+    async getWeeklyReportsInRange(startDate, endDate, serviceId = null) {
+        try {
+            let query = supabase
+                .from('weekly_reports')
+                .select('*')
+                .gte('submitted_at', startDate)
+                .lte('submitted_at', endDate);
+
+            if (serviceId) {
+                query = query.eq('service_id', serviceId);
+            }
+
+            const { data, error } = await query;
+            if (error) throw error;
+
+            return data.map(row => ({
+                serviceId: row.service_id,
+                weekNumber: row.week_number,
+                year: row.year,
+                status: row.status,
+                submittedAt: row.submitted_at
+            }));
+        } catch (error) {
+            console.error('Error fetching weekly reports in range:', error);
+            return [];
         }
     }
 
