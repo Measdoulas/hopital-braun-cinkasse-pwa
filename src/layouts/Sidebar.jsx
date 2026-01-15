@@ -32,13 +32,13 @@ const Sidebar = ({ className, onClose }) => {
                 to: '/saisie',
                 icon: FileEdit,
                 label: 'Rapport du jour',
-                roles: [ROLES.SERVICE, ROLES.CHEF_SERVICE]
+                roles: [ROLES.SERVICE]
             },
             {
                 to: '/rapports',
                 icon: FileText,
                 label: 'Rapports Hebdo',
-                roles: [ROLES.SERVICE, ROLES.CHEF_SERVICE]
+                roles: [ROLES.SERVICE]
             },
             {
                 to: '/validation',

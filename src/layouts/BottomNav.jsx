@@ -19,7 +19,7 @@ const BottomNav = ({ onMoreClick }) => {
             { to: '/', icon: LayoutDashboard, label: 'Accueil', roles: [ROLES.SERVICE, ROLES.DIRECTION, ROLES.ADMIN] },
             { to: '/saisie', icon: FileEdit, label: 'Rapport du jour', roles: [ROLES.SERVICE] },
             { to: '/validation', icon: FileEdit, label: 'Valid.', roles: [ROLES.DIRECTION, ROLES.CHEF_SERVICE, ROLES.ADMIN] },
-            { to: '/historique', icon: History, label: 'Historique', roles: [ROLES.SERVICE, ROLES.DIRECTION] },
+            { to: '/historique', icon: History, label: 'Historique', roles: [ROLES.SERVICE, ROLES.CHEF_SERVICE, ROLES.DIRECTION] },
         ];
         return items.filter(item => item.roles.includes(role));
     };
