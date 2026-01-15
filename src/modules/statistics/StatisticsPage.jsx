@@ -35,6 +35,17 @@ const StatisticsPage = () => {
         : 'all';
     const [selectedService, setSelectedService] = useState(initialService);
 
+    // Métriques sélectionnées pour l'affichage
+    const [selectedMetrics, setSelectedMetrics] = useState(['admissions', 'deces']);
+
+    const toggleMetric = (metric) => {
+        setSelectedMetrics(prev =>
+            prev.includes(metric)
+                ? prev.filter(m => m !== metric)
+                : [...prev, metric]
+        );
+    };
+
     useEffect(() => {
         loadMedicalStats();
     }, [period, selectedService]);
@@ -60,7 +71,7 @@ const StatisticsPage = () => {
 
         // Initialiser aggregation services
         Object.values(SERVICES).forEach(s => {
-            serviceAggregation[s.id] = { name: s.name, admissions: 0, deces: 0, occupancy: 0, count: 0 };
+            serviceAggregation[s.id] = { name: s.name, admissions: 0, deces: 0, guerisons: 0, occupancy: 0, count: 0 };
         });
 
         reports.forEach(r => {
@@ -82,16 +93,18 @@ const StatisticsPage = () => {
                 const s = serviceAggregation[r.serviceId];
                 s.admissions += admissions;
                 s.deces += deces;
+                s.guerisons += guerisons;
                 s.occupancy += effectifFin;
                 s.count++;
             }
 
             // Daily trend
             if (!dailyTrend[r.date]) {
-                dailyTrend[r.date] = { date: r.date, admissions: 0, deces: 0 };
+                dailyTrend[r.date] = { date: r.date, admissions: 0, deces: 0, guerisons: 0 };
             }
             dailyTrend[r.date].admissions += admissions;
             dailyTrend[r.date].deces += deces;
+            dailyTrend[r.date].guerisons += guerisons;
         });
 
         // Calcul occupation moyenne (approximatif: somme effectifs / nombre de jours de rapport)
@@ -126,48 +139,88 @@ const StatisticsPage = () => {
     return (
         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
             {/* Header & Filters */}
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                <div>
-                    <h1 className="text-3xl font-bold text-slate-900">Analyses Médicales</h1>
-                    <p className="text-slate-500">Flux de patients et indicateurs de mortalité</p>
-                </div>
-
-                <div className="flex flex-wrap gap-2">
-                    <div className="flex items-center gap-2 bg-white p-2 border rounded-lg">
-                        <Calendar className="w-4 h-4 text-slate-400" />
-                        <input
-                            type="date"
-                            value={period.start}
-                            onChange={e => setPeriod({ ...period, start: e.target.value })}
-                            className="text-sm border-none p-0 focus:ring-0"
-                        />
-                        <span className="text-slate-400">→</span>
-                        <input
-                            type="date"
-                            value={period.end}
-                            onChange={e => setPeriod({ ...period, end: e.target.value })}
-                            className="text-sm border-none p-0 focus:ring-0"
-                        />
+            <div className="flex flex-col space-y-4">
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                    <div>
+                        <h1 className="text-3xl font-bold text-slate-900">Analyses Médicales</h1>
+                        <p className="text-slate-500">Flux de patients et indicateurs de mortalité</p>
                     </div>
 
-                    {canFilterService && (
-                        <select
-                            value={selectedService}
-                            onChange={e => setSelectedService(e.target.value)}
-                            className="p-2 border rounded-lg text-sm bg-white"
-                        >
-                            <option value="all">Tous les services</option>
-                            {Object.values(SERVICES).map(s => (
-                                <option key={s.id} value={s.id}>{s.name}</option>
-                            ))}
-                        </select>
-                    )}
+                    <div className="flex flex-wrap gap-2">
+                        <div className="flex items-center gap-2 bg-white p-2 border rounded-lg">
+                            <Calendar className="w-4 h-4 text-slate-400" />
+                            <input
+                                type="date"
+                                value={period.start}
+                                onChange={e => setPeriod({ ...period, start: e.target.value })}
+                                className="text-sm border-none p-0 focus:ring-0"
+                            />
+                            <span className="text-slate-400">→</span>
+                            <input
+                                type="date"
+                                value={period.end}
+                                onChange={e => setPeriod({ ...period, end: e.target.value })}
+                                className="text-sm border-none p-0 focus:ring-0"
+                            />
+                        </div>
+
+                        {canFilterService && (
+                            <select
+                                value={selectedService}
+                                onChange={e => setSelectedService(e.target.value)}
+                                className="p-2 border rounded-lg text-sm bg-white"
+                            >
+                                <option value="all">Tous les services</option>
+                                {Object.values(SERVICES).map(s => (
+                                    <option key={s.id} value={s.id}>{s.name}</option>
+                                ))}
+                            </select>
+                        )}
+                    </div>
+                </div>
+
+                {/* Sélecteur de Métriques */}
+                <div className="flex flex-wrap gap-4 bg-white p-4 rounded-xl border border-slate-100 shadow-sm">
+                    <span className="text-sm font-bold text-slate-700 mr-2 my-auto">Afficher :</span>
+
+                    <label className="flex items-center gap-2 cursor-pointer select-none">
+                        <input
+                            type="checkbox"
+                            checked={selectedMetrics.includes('admissions')}
+                            onChange={() => toggleMetric('admissions')}
+                            className="rounded text-blue-600 focus:ring-blue-500"
+                        />
+                        <span className="text-sm text-slate-600">Admissions</span>
+                        <div className="w-3 h-3 rounded-full bg-blue-500"></div>
+                    </label>
+
+                    <label className="flex items-center gap-2 cursor-pointer select-none">
+                        <input
+                            type="checkbox"
+                            checked={selectedMetrics.includes('guerisons')}
+                            onChange={() => toggleMetric('guerisons')}
+                            className="rounded text-green-600 focus:ring-green-500"
+                        />
+                        <span className="text-sm text-slate-600">Guérisons</span>
+                        <div className="w-3 h-3 rounded-full bg-green-500"></div>
+                    </label>
+
+                    <label className="flex items-center gap-2 cursor-pointer select-none">
+                        <input
+                            type="checkbox"
+                            checked={selectedMetrics.includes('deces')}
+                            onChange={() => toggleMetric('deces')}
+                            className="rounded text-red-600 focus:ring-red-500"
+                        />
+                        <span className="text-sm text-slate-600">Décès</span>
+                        <div className="w-3 h-3 rounded-full bg-red-500"></div>
+                    </label>
                 </div>
             </div>
 
             {/* KPIs Médicaux */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <Card>
+                <Card className={selectedMetrics.includes('admissions') ? 'ring-2 ring-blue-100' : 'opacity-60'}>
                     <CardContent className="p-6">
                         <div className="flex justify-between items-start">
                             <div>
@@ -181,7 +234,7 @@ const StatisticsPage = () => {
                     </CardContent>
                 </Card>
 
-                <Card>
+                <Card className={selectedMetrics.includes('deces') ? 'ring-2 ring-red-100' : 'opacity-60'}>
                     <CardContent className="p-6">
                         <div className="flex justify-between items-start">
                             <div>
@@ -195,7 +248,7 @@ const StatisticsPage = () => {
                     </CardContent>
                 </Card>
 
-                <Card>
+                <Card className={selectedMetrics.includes('guerisons') ? 'ring-2 ring-green-100' : 'opacity-60'}>
                     <CardContent className="p-6">
                         <div className="flex justify-between items-start">
                             <div>
@@ -238,8 +291,15 @@ const StatisticsPage = () => {
                                 <YAxis />
                                 <Tooltip labelFormatter={d => format(parseISO(d), 'dd MMMM yyyy', { locale: fr })} />
                                 <Legend />
-                                <Line type="monotone" dataKey="admissions" stroke="#2563EB" name="Admissions" strokeWidth={2} />
-                                <Line type="monotone" dataKey="deces" stroke="#EF4444" name="Décès" strokeWidth={2} />
+                                {selectedMetrics.includes('admissions') && (
+                                    <Line type="monotone" dataKey="admissions" stroke="#2563EB" name="Admissions" strokeWidth={2} />
+                                )}
+                                {selectedMetrics.includes('deces') && (
+                                    <Line type="monotone" dataKey="deces" stroke="#EF4444" name="Décès" strokeWidth={2} />
+                                )}
+                                {selectedMetrics.includes('guerisons') && (
+                                    <Line type="monotone" dataKey="guerisons" stroke="#22C55E" name="Guérisons" strokeWidth={2} />
+                                )}
                             </LineChart>
                         </ResponsiveContainer>
                     </CardContent>
@@ -257,8 +317,15 @@ const StatisticsPage = () => {
                                 <YAxis dataKey="name" type="category" width={100} />
                                 <Tooltip />
                                 <Legend />
-                                <Bar dataKey="admissions" fill="#3B82F6" name="Admissions" stackId="a" />
-                                <Bar dataKey="deces" fill="#EF4444" name="Décès" stackId="a" />
+                                {selectedMetrics.includes('admissions') && (
+                                    <Bar dataKey="admissions" fill="#3B82F6" name="Admissions" stackId="a" />
+                                )}
+                                {selectedMetrics.includes('guerisons') && (
+                                    <Bar dataKey="guerisons" fill="#22C55E" name="Guérisons" stackId="a" />
+                                )}
+                                {selectedMetrics.includes('deces') && (
+                                    <Bar dataKey="deces" fill="#EF4444" name="Décès" stackId="a" />
+                                )}
                             </BarChart>
                         </ResponsiveContainer>
                     </CardContent>

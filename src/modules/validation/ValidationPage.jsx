@@ -250,8 +250,7 @@ const ValidationPage = () => {
                                             </Button>
 
                                             {(report.status === REPORT_STATUS.PENDING ||
-                                                report.status === REPORT_STATUS.TRANSMITTED_TO_CHIEF ||
-                                                (user.role === ROLES.DIRECTION && report.status === REPORT_STATUS.VALIDATED_BY_CHIEF)) && (
+                                                report.status === REPORT_STATUS.TRANSMITTED_TO_CHIEF) && (
                                                     <>
                                                         <Button
                                                             size="sm"
