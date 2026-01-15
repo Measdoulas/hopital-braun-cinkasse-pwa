@@ -92,20 +92,42 @@ const StatisticsPage = () => {
             const actsAggregation = {};
 
             // Initialiser aggregation services
-            Object.values(SERVICES).forEach(s => {
-                serviceAggregation[s.id] = {
-                    name: s.name,
-                    admissions: 0,
-                    deces: 0,
-                    guerisons: 0,
-                    referes: 0,
-                    transferts: 0,
-                    evasions: 0,
-                    observ: 0,
-                    occupancy: 0,
-                    count: 0
-                };
-            });
+            // Pour les Services/Chefs: seulement LEUR service
+            // Pour Direction/Admin: tous les services
+            if (serviceFilter) {
+                // Un service spécifique sélectionné (Service/Chef)
+                const serviceDef = Object.values(SERVICES).find(s => s.id === serviceFilter);
+                if (serviceDef) {
+                    serviceAggregation[serviceDef.id] = {
+                        name: serviceDef.name,
+                        admissions: 0,
+                        deces: 0,
+                        guerisons: 0,
+                        referes: 0,
+                        transferts: 0,
+                        evasions: 0,
+                        observ: 0,
+                        occupancy: 0,
+                        count: 0
+                    };
+                }
+            } else {
+                // Direction/Admin: tous les services
+                Object.values(SERVICES).forEach(s => {
+                    serviceAggregation[s.id] = {
+                        name: s.name,
+                        admissions: 0,
+                        deces: 0,
+                        guerisons: 0,
+                        referes: 0,
+                        transferts: 0,
+                        evasions: 0,
+                        observ: 0,
+                        occupancy: 0,
+                        count: 0
+                    };
+                });
+            }
 
             // Helper pour trouver le label d'un acte
             const getActLabel = (actId, serviceId) => {
