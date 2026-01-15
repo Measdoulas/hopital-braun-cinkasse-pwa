@@ -180,15 +180,46 @@ const DashboardPage = () => {
                     {/* On affiche la liste des services seulement pour la Direction */}
                     {(user?.role === ROLES.DIRECTION || user?.role === ROLES.ADMIN) && <ServiceList />}
 
-                    {/* Pour les services, on pourrait afficher un récapitulatif rapide ou des messages */}
+                    {/* Pour les services : Widget Actes Récurrents + Actions Rapides */}
                     {(user?.role === ROLES.SERVICE || user?.role === ROLES.CHEF_SERVICE) && (
-                        <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
-                            <h3 className="font-semibold text-slate-800 mb-4">Actions Rapides</h3>
-                            <button className="w-full py-2 px-4 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition" onClick={() => window.location.href = '/daily-entry'}>
-                                + Nouveau Rapport Quotidien
-                            </button>
-                            <div className="mt-4 text-sm text-slate-500">
-                                Assurez-vous de soumettre votre rapport avant 9h00.
+                        <div className="space-y-6">
+                            {/* Widget: Actes Médicaux Récurrents (7 derniers jours) */}
+                            <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+                                <h3 className="font-semibold text-slate-800 mb-4 flex items-center gap-2">
+                                    <Activity className="w-5 h-5 text-blue-600" />
+                                    Actes Fréquents (7j)
+                                </h3>
+                                {stats.topActs && stats.topActs.length > 0 ? (
+                                    <div className="space-y-3">
+                                        {stats.topActs.map((act, idx) => (
+                                            <div key={idx} className="flex justify-between items-center py-2 border-b border-slate-100 last:border-0">
+                                                <span className="text-sm text-slate-700 truncate flex-1 pr-2">{act.name}</span>
+                                                <span className="text-sm font-bold text-blue-600 px-2 py-1 bg-blue-50 rounded">{act.count}</span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <p className="text-sm text-slate-400 italic">Aucun acte enregistré récemment.</p>
+                                )}
+                                <div className="mt-4 pt-4 border-t border-slate-100">
+                                    <a href="/statistiques" className="text-sm text-blue-600 hover:underline flex items-center gap-1">
+                                        Voir toutes les statistiques →
+                                    </a>
+                                </div>
+                            </div>
+
+                            {/* Actions Rapides */}
+                            <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+                                <h3 className="font-semibold text-slate-800 mb-4">Actions Rapides</h3>
+                                <button
+                                    className="w-full py-2 px-4 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+                                    onClick={() => window.location.href = '/daily-entry'}
+                                >
+                                    + Nouveau Rapport Quotidien
+                                </button>
+                                <div className="mt-4 text-sm text-slate-500">
+                                    Assurez-vous de soumettre votre rapport avant 9h00.
+                                </div>
                             </div>
                         </div>
                     )}

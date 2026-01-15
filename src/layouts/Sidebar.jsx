@@ -56,7 +56,7 @@ const Sidebar = ({ className, onClose }) => {
                 to: '/statistiques',
                 icon: BarChart2,
                 label: 'Statistiques',
-                roles: [ROLES.DIRECTION, ROLES.ADMIN]
+                roles: [ROLES.SERVICE, ROLES.CHEF_SERVICE, ROLES.DIRECTION, ROLES.ADMIN]
             },
             {
                 to: '/parametres',
