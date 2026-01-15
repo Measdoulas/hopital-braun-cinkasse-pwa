@@ -184,36 +184,47 @@ const StatisticsPage = () => {
                     <span className="text-sm font-bold text-slate-700 mr-2 my-auto">Afficher :</span>
 
                     <label className="flex items-center gap-2 cursor-pointer select-none">
-                        <input
-                            type="checkbox"
-                            checked={selectedMetrics.includes('admissions')}
-                            onChange={() => toggleMetric('admissions')}
-                            className="rounded text-blue-600 focus:ring-blue-500"
-                        />
+                        <input type="checkbox" checked={selectedMetrics.includes('admissions')} onChange={() => toggleMetric('admissions')} className="rounded text-blue-600 focus:ring-blue-500" />
                         <span className="text-sm text-slate-600">Admissions</span>
-                        <div className="w-3 h-3 rounded-full bg-blue-500"></div>
+                        <div className="w-2 h-2 rounded-full bg-blue-600"></div>
                     </label>
 
                     <label className="flex items-center gap-2 cursor-pointer select-none">
-                        <input
-                            type="checkbox"
-                            checked={selectedMetrics.includes('guerisons')}
-                            onChange={() => toggleMetric('guerisons')}
-                            className="rounded text-green-600 focus:ring-green-500"
-                        />
+                        <input type="checkbox" checked={selectedMetrics.includes('guerisons')} onChange={() => toggleMetric('guerisons')} className="rounded text-green-600 focus:ring-green-500" />
                         <span className="text-sm text-slate-600">Guérisons</span>
-                        <div className="w-3 h-3 rounded-full bg-green-500"></div>
+                        <div className="w-2 h-2 rounded-full bg-green-600"></div>
                     </label>
 
                     <label className="flex items-center gap-2 cursor-pointer select-none">
-                        <input
-                            type="checkbox"
-                            checked={selectedMetrics.includes('deces')}
-                            onChange={() => toggleMetric('deces')}
-                            className="rounded text-red-600 focus:ring-red-500"
-                        />
+                        <input type="checkbox" checked={selectedMetrics.includes('deces')} onChange={() => toggleMetric('deces')} className="rounded text-red-600 focus:ring-red-500" />
                         <span className="text-sm text-slate-600">Décès</span>
-                        <div className="w-3 h-3 rounded-full bg-red-500"></div>
+                        <div className="w-2 h-2 rounded-full bg-red-600"></div>
+                    </label>
+
+                    <div className="w-px h-6 bg-slate-200 mx-1"></div>
+
+                    <label className="flex items-center gap-2 cursor-pointer select-none">
+                        <input type="checkbox" checked={selectedMetrics.includes('referes')} onChange={() => toggleMetric('referes')} className="rounded text-amber-500 focus:ring-amber-500" />
+                        <span className="text-sm text-slate-600">Référés (Ext)</span>
+                        <div className="w-2 h-2 rounded-full bg-amber-500"></div>
+                    </label>
+
+                    <label className="flex items-center gap-2 cursor-pointer select-none">
+                        <input type="checkbox" checked={selectedMetrics.includes('transferts')} onChange={() => toggleMetric('transferts')} className="rounded text-indigo-500 focus:ring-indigo-500" />
+                        <span className="text-sm text-slate-600">Transférés (Int)</span>
+                        <div className="w-2 h-2 rounded-full bg-indigo-500"></div>
+                    </label>
+
+                    <label className="flex items-center gap-2 cursor-pointer select-none">
+                        <input type="checkbox" checked={selectedMetrics.includes('evasions')} onChange={() => toggleMetric('evasions')} className="rounded text-slate-600 focus:ring-slate-500" />
+                        <span className="text-sm text-slate-600">Évasions</span>
+                        <div className="w-2 h-2 rounded-full bg-slate-600"></div>
+                    </label>
+
+                    <label className="flex items-center gap-2 cursor-pointer select-none">
+                        <input type="checkbox" checked={selectedMetrics.includes('observ')} onChange={() => toggleMetric('observ')} className="rounded text-cyan-500 focus:ring-cyan-500" />
+                        <span className="text-sm text-slate-600">Mise en Obs.</span>
+                        <div className="w-2 h-2 rounded-full bg-cyan-500"></div>
                     </label>
                 </div>
             </div>
@@ -281,7 +292,7 @@ const StatisticsPage = () => {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <Card>
                     <CardHeader>
-                        <CardTitle>Flux Admissions vs Décès (Tendance)</CardTitle>
+                        <CardTitle>{getChartTitle()}</CardTitle>
                     </CardHeader>
                     <CardContent className="h-[350px]">
                         <ResponsiveContainer width="100%" height="100%">
@@ -299,6 +310,18 @@ const StatisticsPage = () => {
                                 )}
                                 {selectedMetrics.includes('guerisons') && (
                                     <Line type="monotone" dataKey="guerisons" stroke="#22C55E" name="Guérisons" strokeWidth={2} />
+                                )}
+                                {selectedMetrics.includes('referes') && (
+                                    <Line type="monotone" dataKey="referes" stroke="#F59E0B" name="Référés" strokeWidth={2} />
+                                )}
+                                {selectedMetrics.includes('transferts') && (
+                                    <Line type="monotone" dataKey="transferts" stroke="#6366F1" name="Transférés" strokeWidth={2} />
+                                )}
+                                {selectedMetrics.includes('evasions') && (
+                                    <Line type="monotone" dataKey="evasions" stroke="#4B5563" name="Évasions" strokeWidth={2} />
+                                )}
+                                {selectedMetrics.includes('observ') && (
+                                    <Line type="monotone" dataKey="observ" stroke="#06B6D4" name="Mise en Obs." strokeWidth={2} />
                                 )}
                             </LineChart>
                         </ResponsiveContainer>
@@ -325,6 +348,18 @@ const StatisticsPage = () => {
                                 )}
                                 {selectedMetrics.includes('deces') && (
                                     <Bar dataKey="deces" fill="#EF4444" name="Décès" stackId="a" />
+                                )}
+                                {selectedMetrics.includes('referes') && (
+                                    <Bar dataKey="referes" fill="#F59E0B" name="Référés" stackId="a" />
+                                )}
+                                {selectedMetrics.includes('transferts') && (
+                                    <Bar dataKey="transferts" fill="#6366F1" name="Transférés" stackId="a" />
+                                )}
+                                {selectedMetrics.includes('evasions') && (
+                                    <Bar dataKey="evasions" fill="#4B5563" name="Évasions" stackId="a" />
+                                )}
+                                {selectedMetrics.includes('observ') && (
+                                    <Bar dataKey="observ" fill="#06B6D4" name="Mise en Obs." stackId="a" />
                                 )}
                             </BarChart>
                         </ResponsiveContainer>
@@ -361,6 +396,33 @@ const StatisticsPage = () => {
                                 ))}
                             </tbody>
                         </table>
+                    </div>
+                </CardContent>
+            </Card>
+
+            {/* Analyse des Actes Médicaux */}
+            <Card>
+                <CardHeader>
+                    <CardTitle>Actes Médicaux & Interventions (Top 15)</CardTitle>
+                </CardHeader>
+                <CardContent className="h-[400px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                        <BarChart data={stats.actsData} layout="vertical" margin={{ left: 20 }}>
+                            <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} />
+                            <XAxis type="number" />
+                            <YAxis dataKey="name" type="category" width={180} interval={0} fontSize={12} />
+                            <Tooltip cursor={{ fill: '#f1f5f9' }} />
+                            <Bar
+                                dataKey="count"
+                                fill="#0ea5e9"
+                                radius={[0, 4, 4, 0]}
+                                name="Nombre d'actes"
+                                barSize={20}
+                            />
+                        </BarChart>
+                    </ResponsiveContainer>
+                    <div className="mt-4 text-center text-sm text-slate-500">
+                        * Les actes ayant une nomenclature identique inter-services sont cumulés.
                     </div>
                 </CardContent>
             </Card>
