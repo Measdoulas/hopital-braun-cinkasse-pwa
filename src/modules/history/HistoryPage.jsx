@@ -8,16 +8,26 @@ import { SERVICES } from '../../utils/data-models';
 import { format, parseISO } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { Search, Calendar, Filter, FileText, Download, ChevronRight } from 'lucide-react';
+import { useAuth } from '../../contexts/AuthContext';
+import { ROLES } from '../../utils/data-models';
 
 /**
  * HistoryPage - Historique des Rapports
  * Recherche et consultation de tous les rapports (quotidiens et hebdomadaires)
  */
 const HistoryPage = () => {
+    const { user } = useAuth();
+
+    // Déterminer si l'utilisateur peut voir tous les services
+    const canViewAll = user.role === ROLES.DIRECTION || user.role === ROLES.ADMIN;
+
+    // Initialiser le filtre : si restreint, forcer le service de l'utilisateur
+    const initialService = canViewAll ? 'all' : (user.serviceId || user.username);
+
     const [reports, setReports] = useState([]);
     const [filteredReports, setFilteredReports] = useState([]);
     const [searchTerm, setSearchTerm] = useState('');
-    const [filterService, setFilterService] = useState('all');
+    const [filterService, setFilterService] = useState(initialService);
     const [filterType, setFilterType] = useState('all'); // daily, weekly, all
     const [loading, setLoading] = useState(true);
 
@@ -164,18 +174,26 @@ const HistoryPage = () => {
                             <label className="block text-sm font-medium text-slate-700 mb-2">
                                 Service
                             </label>
-                            <select
-                                value={filterService}
-                                onChange={(e) => setFilterService(e.target.value)}
-                                className="w-full h-12 px-4 rounded-xl border-2 border-slate-200 bg-white text-slate-900 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all"
-                            >
-                                <option value="all">Tous les services</option>
-                                {Object.values(SERVICES).map(service => (
-                                    <option key={service.id} value={service.id}>
-                                        {service.name}
-                                    </option>
-                                ))}
-                            </select>
+                            {canViewAll ? (
+                                <select
+                                    value={filterService}
+                                    onChange={(e) => setFilterService(e.target.value)}
+                                    className="w-full h-12 px-4 rounded-xl border-2 border-slate-200 bg-white text-slate-900 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all"
+                                >
+                                    <option value="all">Tous les services</option>
+                                    {Object.values(SERVICES).map(service => (
+                                        <option key={service.id} value={service.id}>
+                                            {service.name}
+                                        </option>
+                                    ))}
+                                </select>
+                            ) : (
+                                <Input
+                                    value={getServiceName(filterService)}
+                                    disabled={true}
+                                    className="bg-slate-50 text-slate-500 border-slate-200"
+                                />
+                            )}
                         </div>
 
                         {/* Filtre Type */}
