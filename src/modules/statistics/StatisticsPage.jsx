@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '../../components/ui/Card';
 import { SupabaseStorageService } from '../../services/SupabaseStorageService';
 import { SERVICES, ROLES } from '../../utils/data-models';
+import { SERVICE_CONFIGS } from '../daily-entry/forms/form-config';
 import { useAuth } from '../../contexts/AuthContext';
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { AlertCircle, Users, Activity, BedDouble, Calendar } from 'lucide-react';
@@ -10,7 +11,7 @@ import { fr } from 'date-fns/locale';
 
 /**
  * StatisticsPage - Tableau de Bord Médical Analytique
- * Focus: Flux patients, Mortalité, Occupation
+ * Focus: Flux patients, Mortalité, Occupation, Actes
  */
 const StatisticsPage = () => {
     const { user } = useAuth();
@@ -47,6 +48,25 @@ const StatisticsPage = () => {
         );
     };
 
+    const getChartTitle = () => {
+        if (selectedMetrics.length === 0) return "Aucune donnée sélectionnée";
+
+        const labels = {
+            admissions: "Admissions",
+            deces: "Décès",
+            guerisons: "Guérisons",
+            referes: "Référés (Ext)",
+            transferts: "Transférés (Int)",
+            evasions: "Évasions",
+            observ: "Mise en Obs."
+        };
+
+        if (selectedMetrics.length <= 3) {
+            return "Évolution : " + selectedMetrics.map(m => labels[m]).join(" vs ");
+        }
+        return "Vue d'ensemble Multi-Métrique (" + selectedMetrics.length + " indicateurs)";
+    };
+
     useEffect(() => {
         loadMedicalStats();
     }, [period, selectedService]);
@@ -55,82 +75,163 @@ const StatisticsPage = () => {
         setLoading(true);
         const storage = SupabaseStorageService.getInstance();
 
-        // 1. Récupérer les rapports sur la période
-        // Si 'all', on passe null pour récupérer tout
-        const serviceFilter = selectedService === 'all' ? null : selectedService;
-        const reports = await storage.getDailyReportsInRange(period.start, period.end, serviceFilter);
+        try {
+            // 1. Récupérer les rapports sur la période
+            const serviceFilter = selectedService === 'all' ? null : selectedService;
+            const reports = await storage.getDailyReportsInRange(period.start, period.end, serviceFilter);
 
-        // 2. Agréger les données médicales
-        let totalAdmissions = 0;
-        let totalDeces = 0;
-        let totalGuerisons = 0;
-        let sumOccupancy = 0;
-        let countReports = 0;
+            // 2. Agréger les données médicales
+            let totalAdmissions = 0;
+            let totalDeces = 0;
+            let totalGuerisons = 0;
+            let sumOccupancy = 0;
+            let countReports = 0;
 
-        const serviceAggregation = {};
-        const dailyTrend = {};
+            const serviceAggregation = {};
+            const dailyTrend = {};
+            const actsAggregation = {};
 
-        // Initialiser aggregation services
-        Object.values(SERVICES).forEach(s => {
-            serviceAggregation[s.id] = { name: s.name, admissions: 0, deces: 0, guerisons: 0, occupancy: 0, count: 0 };
-        });
+            // Initialiser aggregation services
+            Object.values(SERVICES).forEach(s => {
+                serviceAggregation[s.id] = {
+                    name: s.name,
+                    admissions: 0,
+                    deces: 0,
+                    guerisons: 0,
+                    referes: 0,
+                    transferts: 0,
+                    evasions: 0,
+                    observ: 0,
+                    occupancy: 0,
+                    count: 0
+                };
+            });
 
-        reports.forEach(r => {
-            const mvts = r.data?.mouvements || {};
-            const admissions = parseInt(mvts.entrees) || 0;
-            const deces = parseInt(mvts.sorties?.deces) || 0;
-            const guerisons = parseInt(mvts.sorties?.aDomicile) || 0;
-            const effectifFin = parseInt(mvts.effectifFin) || 0;
+            // Helper pour trouver le label d'un acte
+            const getActLabel = (actId, serviceId) => {
+                if (!SERVICE_CONFIGS) return actId;
 
-            // Global totals
-            totalAdmissions += admissions;
-            totalDeces += deces;
-            totalGuerisons += guerisons;
-            sumOccupancy += effectifFin;
-            countReports++;
+                const serviceConfig = SERVICE_CONFIGS[serviceId];
+                if (serviceConfig?.actTypes) {
+                    const act = serviceConfig.actTypes.find(a => a.id === actId);
+                    if (act) return act.label;
+                }
 
-            // Service aggregation
-            if (serviceAggregation[r.serviceId]) {
-                const s = serviceAggregation[r.serviceId];
-                s.admissions += admissions;
-                s.deces += deces;
-                s.guerisons += guerisons;
-                s.occupancy += effectifFin;
-                s.count++;
-            }
+                try {
+                    for (const conf of Object.values(SERVICE_CONFIGS)) {
+                        const act = conf.actTypes?.find(a => a.id === actId);
+                        if (act) return act.label;
+                    }
+                } catch (e) {
+                    console.warn("Error looking up act label", e);
+                }
+                return actId;
+            };
 
-            // Daily trend
-            if (!dailyTrend[r.date]) {
-                dailyTrend[r.date] = { date: r.date, admissions: 0, deces: 0, guerisons: 0 };
-            }
-            dailyTrend[r.date].admissions += admissions;
-            dailyTrend[r.date].deces += deces;
-            dailyTrend[r.date].guerisons += guerisons;
-        });
+            reports.forEach(r => {
+                const mvts = r.data?.mouvements || {};
+                const sorties = mvts.sorties || {};
 
-        // Calcul occupation moyenne (approximatif: somme effectifs / nombre de jours de rapport)
-        const avgOccupancy = countReports > 0 ? Math.round(sumOccupancy / countReports) : 0; // C'est une moyenne par rapport, attention si plusieurs services
+                const admissions = parseInt(mvts.entrees) || 0;
+                const deces = parseInt(sorties.deces) || 0;
+                const guerisons = parseInt(sorties.aDomicile) || 0;
+                const referes = parseInt(sorties.referes) || 0;
+                const transferts = parseInt(sorties.transferts) || 0;
+                const evasions = parseInt(sorties.fugitifs) || 0;
+                const observ = parseInt(sorties.observ) || 0;
+                const effectifFin = parseInt(mvts.effectifFin) || 0;
 
-        // Préparer données graphiques
-        const byServiceData = Object.values(serviceAggregation)
-            .filter(s => s.count > 0 || (selectedService !== 'all' && s.count === 0)) // Garder service vide si sélectionné
-            .map(s => ({
-                ...s,
-                avgOccupancy: s.count > 0 ? Math.round(s.occupancy / s.count) : 0
-            }));
+                // Global totals
+                totalAdmissions += admissions;
+                totalDeces += deces;
+                totalGuerisons += guerisons;
+                sumOccupancy += effectifFin;
+                countReports++;
 
-        const trendData = Object.values(dailyTrend).sort((a, b) => new Date(a.date) - new Date(b.date));
+                // Service aggregation
+                if (serviceAggregation[r.serviceId]) {
+                    const s = serviceAggregation[r.serviceId];
+                    s.admissions += admissions;
+                    s.deces += deces;
+                    s.guerisons += guerisons;
+                    s.referes += referes;
+                    s.transferts += transferts;
+                    s.evasions += evasions;
+                    s.observ += observ;
+                    s.occupancy += effectifFin;
+                    s.count++;
+                }
 
-        setStats({
-            admissions: totalAdmissions,
-            deces: totalDeces,
-            guerisons: totalGuerisons,
-            occupationMoyenne: avgOccupancy,
-            byService: byServiceData,
-            trendData: trendData
-        });
+                // Daily trend
+                if (!dailyTrend[r.date]) {
+                    dailyTrend[r.date] = {
+                        date: r.date,
+                        admissions: 0,
+                        deces: 0,
+                        guerisons: 0,
+                        referes: 0,
+                        transferts: 0,
+                        evasions: 0,
+                        observ: 0
+                    };
+                }
+                dailyTrend[r.date].admissions += admissions;
+                dailyTrend[r.date].deces += deces;
+                dailyTrend[r.date].guerisons += guerisons;
+                dailyTrend[r.date].referes += referes;
+                dailyTrend[r.date].transferts += transferts;
+                dailyTrend[r.date].evasions += evasions;
+                dailyTrend[r.date].observ += observ;
 
-        setLoading(false);
+                // Acts Aggregation
+                const reportActs = r.data?.autres?.actes || {};
+                Object.entries(reportActs).forEach(([actId, count]) => {
+                    const val = parseInt(count) || 0;
+                    if (val > 0) {
+                        if (!actsAggregation[actId]) {
+                            actsAggregation[actId] = {
+                                id: actId,
+                                count: 0,
+                                name: getActLabel(actId, r.serviceId)
+                            };
+                        }
+                        actsAggregation[actId].count += val;
+                    }
+                });
+            });
+
+            // Calcul occupation moyenne
+            const avgOccupancy = countReports > 0 ? Math.round(sumOccupancy / countReports) : 0;
+
+            // Préparer données graphiques
+            const byServiceData = Object.values(serviceAggregation)
+                .filter(s => s.count > 0 || (selectedService !== 'all' && s.count === 0))
+                .map(s => ({
+                    ...s,
+                    avgOccupancy: s.count > 0 ? Math.round(s.occupancy / s.count) : 0
+                }));
+
+            const trendData = Object.values(dailyTrend).sort((a, b) => new Date(a.date) - new Date(b.date));
+
+            // Acts Data Sorted (Top 15)
+            const actsData = Object.values(actsAggregation)
+                .sort((a, b) => b.count - a.count)
+                .slice(0, 15);
+
+            setStats({
+                admissions: totalAdmissions,
+                deces: totalDeces,
+                guerisons: totalGuerisons,
+                occupationMoyenne: avgOccupancy,
+                byService: byServiceData,
+                trendData: trendData,
+                actsData: actsData
+            });
+        } catch (error) {
+            console.error("Erreur lors du chargement des statistiques:", error);
+        } finally {
+            setLoading(false);
+        }
     };
 
     if (loading) {
@@ -307,7 +408,7 @@ const StatisticsPage = () => {
                                     <Line type="monotone" dataKey="admissions" stroke="#2563EB" name="Admissions" strokeWidth={2} />
                                 )}
                                 {selectedMetrics.includes('deces') && (
-                                    <Line type="monotone" dataKey="deces" stroke="#EF4444" name="Décès" strokeWidth={2} />
+                                    <Line type="monotone" dataKey="deces" stroke="##EF4444" name="Décès" strokeWidth={2} />
                                 )}
                                 {selectedMetrics.includes('guerisons') && (
                                     <Line type="monotone" dataKey="guerisons" stroke="#22C55E" name="Guérisons" strokeWidth={2} />
