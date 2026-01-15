@@ -413,7 +413,7 @@ const StatisticsPage = () => {
             </div>
 
             {/* Graphiques */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className={`grid grid-cols-1 ${canFilterService ? 'lg:grid-cols-2' : 'lg:grid-cols-1'} gap-6`}>
                 <Card>
                     <CardHeader>
                         <CardTitle>{getChartTitle()}</CardTitle>
@@ -452,77 +452,81 @@ const StatisticsPage = () => {
                     </CardContent>
                 </Card>
 
-                <Card>
-                    <CardHeader>
-                        <CardTitle>Comparatif par Service</CardTitle>
-                    </CardHeader>
-                    <CardContent className="h-[350px]">
-                        <ResponsiveContainer width="100%" height="100%">
-                            <BarChart data={stats.byService} layout="vertical">
-                                <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} />
-                                <XAxis type="number" />
-                                <YAxis dataKey="name" type="category" width={100} />
-                                <Tooltip />
-                                <Legend />
-                                {selectedMetrics.includes('admissions') && (
-                                    <Bar dataKey="admissions" fill="#3B82F6" name="Admissions" stackId="a" />
-                                )}
-                                {selectedMetrics.includes('guerisons') && (
-                                    <Bar dataKey="guerisons" fill="#22C55E" name="Guérisons" stackId="a" />
-                                )}
-                                {selectedMetrics.includes('deces') && (
-                                    <Bar dataKey="deces" fill="#EF4444" name="Décès" stackId="a" />
-                                )}
-                                {selectedMetrics.includes('referes') && (
-                                    <Bar dataKey="referes" fill="#F59E0B" name="Référés" stackId="a" />
-                                )}
-                                {selectedMetrics.includes('transferts') && (
-                                    <Bar dataKey="transferts" fill="#6366F1" name="Transférés" stackId="a" />
-                                )}
-                                {selectedMetrics.includes('evasions') && (
-                                    <Bar dataKey="evasions" fill="#4B5563" name="Évasions" stackId="a" />
-                                )}
-                                {selectedMetrics.includes('observ') && (
-                                    <Bar dataKey="observ" fill="#06B6D4" name="Mise en Obs." stackId="a" />
-                                )}
-                            </BarChart>
-                        </ResponsiveContainer>
-                    </CardContent>
-                </Card>
+                {canFilterService && (
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Comparatif par Service</CardTitle>
+                        </CardHeader>
+                        <CardContent className="h-[350px]">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <BarChart data={stats.byService} layout="vertical">
+                                    <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} />
+                                    <XAxis type="number" />
+                                    <YAxis dataKey="name" type="category" width={100} />
+                                    <Tooltip />
+                                    <Legend />
+                                    {selectedMetrics.includes('admissions') && (
+                                        <Bar dataKey="admissions" fill="#3B82F6" name="Admissions" stackId="a" />
+                                    )}
+                                    {selectedMetrics.includes('guerisons') && (
+                                        <Bar dataKey="guerisons" fill="#22C55E" name="Guérisons" stackId="a" />
+                                    )}
+                                    {selectedMetrics.includes('deces') && (
+                                        <Bar dataKey="deces" fill="#EF4444" name="Décès" stackId="a" />
+                                    )}
+                                    {selectedMetrics.includes('referes') && (
+                                        <Bar dataKey="referes" fill="#F59E0B" name="Référés" stackId="a" />
+                                    )}
+                                    {selectedMetrics.includes('transferts') && (
+                                        <Bar dataKey="transferts" fill="#6366F1" name="Transférés" stackId="a" />
+                                    )}
+                                    {selectedMetrics.includes('evasions') && (
+                                        <Bar dataKey="evasions" fill="#4B5563" name="Évasions" stackId="a" />
+                                    )}
+                                    {selectedMetrics.includes('observ') && (
+                                        <Bar dataKey="observ" fill="#06B6D4" name="Mise en Obs." stackId="a" />
+                                    )}
+                                </BarChart>
+                            </ResponsiveContainer>
+                        </CardContent>
+                    </Card>
+                )}
             </div>
 
-            {/* Tableau Détaillé */}
-            <Card>
-                <CardHeader>
-                    <CardTitle>Détail de l'activité par Service</CardTitle>
-                </CardHeader>
-                <CardContent>
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-sm text-left">
-                            <thead className="text-xs text-slate-500 uppercase bg-slate-50">
-                                <tr>
-                                    <th className="px-6 py-3">Service</th>
-                                    <th className="px-6 py-3 text-right">Admissions</th>
-                                    <th className="px-6 py-3 text-right">Guérisons</th>
-                                    <th className="px-6 py-3 text-right">Décès</th>
-                                    <th className="px-6 py-3 text-right">Occupation Moy.</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {stats.byService.map((s, idx) => (
-                                    <tr key={idx} className="bg-white border-b hover:bg-slate-50">
-                                        <td className="px-6 py-4 font-medium text-slate-900">{s.name}</td>
-                                        <td className="px-6 py-4 text-right">{s.admissions}</td>
-                                        <td className="px-6 py-4 text-right text-green-600">{s.guerisons}</td>
-                                        <td className="px-6 py-4 text-right text-red-600 font-bold">{s.deces}</td>
-                                        <td className="px-6 py-4 text-right">{s.avgOccupancy}</td>
+            {/* Tableau Détaillé - Seulement pour Direction/Admin */}
+            {canFilterService && (
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Détail de l'activité par Service</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-sm text-left">
+                                <thead className="text-xs text-slate-500 uppercase bg-slate-50">
+                                    <tr>
+                                        <th className="px-6 py-3">Service</th>
+                                        <th className="px-6 py-3 text-right">Admissions</th>
+                                        <th className="px-6 py-3 text-right">Guérisons</th>
+                                        <th className="px-6 py-3 text-right">Décès</th>
+                                        <th className="px-6 py-3 text-right">Occupation Moy.</th>
                                     </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
-                </CardContent>
-            </Card>
+                                </thead>
+                                <tbody>
+                                    {stats.byService.map((s, idx) => (
+                                        <tr key={idx} className="bg-white border-b hover:bg-slate-50">
+                                            <td className="px-6 py-4 font-medium text-slate-900">{s.name}</td>
+                                            <td className="px-6 py-4 text-right">{s.admissions}</td>
+                                            <td className="px-6 py-4 text-right text-green-600">{s.guerisons}</td>
+                                            <td className="px-6 py-4 text-right text-red-600 font-bold">{s.deces}</td>
+                                            <td className="px-6 py-4 text-right">{s.avgOccupancy}</td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </CardContent>
+                </Card>
+            )}
 
             {/* Analyse des Actes Médicaux */}
             <Card>
