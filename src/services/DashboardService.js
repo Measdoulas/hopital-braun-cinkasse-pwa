@@ -49,6 +49,10 @@ export class DashboardService {
         // KPI: Date du dernier rapport (pour Services)
         const lastReportDate = this._getLastReportDate(reportsLast30Days);
 
+        // KPI: Rapports en attente (Weekly)
+        const recentWeeklyReports = await this.storage.getWeeklyReports();
+        const pendingReports = this._countPendingReports(user, recentWeeklyReports, targetServicesList);
+
         // Charts: Activité (7 derniers jours)
         const activityTrend = await this._calculateActivityTrend(targetServiceId);
 
