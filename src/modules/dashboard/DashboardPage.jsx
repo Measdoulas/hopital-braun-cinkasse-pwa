@@ -46,6 +46,98 @@ const DashboardPage = () => {
         return <div className="p-8 text-center">Chargement des indicateurs...</div>;
     }
 
+    // --- Rendu conditionnel des cartes ---
+    const renderCards = () => {
+        // SCENARIO 1: SERVICE (Vue Opérationnelle)
+        if (user?.role === ROLES.SERVICE || user?.role === ROLES.CHEF_SERVICE) {
+            return (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                    {/* Carte 1: Patients Présents (Effectif) */}
+                    <StatCard
+                        title="Patients Présents"
+                        value={stats.hospitalizations.current}
+                        subValue={stats.hospitalizations.capacity > 0 ? `/ ${stats.hospitalizations.capacity} lits` : null}
+                        icon={BedDouble}
+                        color="blue"
+                    />
+
+                    {/* Carte 2: Admissions du Jour */}
+                    <StatCard
+                        title="Admissions (Ce jour)"
+                        value={stats.dailyMovements.admissions}
+                        trend={stats.dailyMovements.admissions > 0 ? "up" : "neutral"}
+                        trendValue="Flux entrant"
+                        icon={Activity}
+                        color="green"
+                    />
+
+                    {/* Carte 3: Sorties du Jour */}
+                    <StatCard
+                        title="Sorties (Ce jour)"
+                        value={stats.dailyMovements.sorties}
+                        trend="neutral"
+                        trendValue="Flux sortant"
+                        icon={Users}
+                        color="orange"
+                    />
+
+                    {/* Carte 4: Statut Dernier Rapport */}
+                    <StatCard
+                        title="Dernier Rapport"
+                        value={stats.lastReportDate ? format(new Date(stats.lastReportDate), 'dd/MM') : "Aucun"}
+                        trendValue={stats.lastReportDate === format(new Date(), 'yyyy-MM-dd') ? "À jour" : "Retard possible"}
+                        icon={Bell}
+                        color={stats.lastReportDate === format(new Date(), 'yyyy-MM-dd') ? "indigo" : "red"}
+                    />
+                </div>
+            );
+        }
+
+        // SCENARIO 2: DIRECTION (Vue Globale)
+        return (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                {/* Carte 1: Total Patients Hospitalisés */}
+                <StatCard
+                    title="Hospitalisations (Total)"
+                    value={stats.hospitalizations.current}
+                    trend="neutral"
+                    trendValue="Tous services confondu"
+                    icon={BedDouble}
+                    color="blue"
+                />
+
+                {/* Carte 2: Admissions Jour (Global) */}
+                <StatCard
+                    title="Admissions (Global 24h)"
+                    value={stats.dailyMovements.admissions}
+                    trend={stats.dailyMovements.admissions > 10 ? "up" : "neutral"}
+                    trendValue="Tendance journée"
+                    icon={Activity}
+                    color="green"
+                />
+
+                {/* Carte 3: Consultations Mois */}
+                <StatCard
+                    title="Consultations (Mois)"
+                    value={stats.consultations.value}
+                    trend={stats.consultations.direction}
+                    trendValue="Volume mensuel"
+                    icon={Stethoscope}
+                    color="purple"
+                />
+
+                {/* Carte 4: Rapports à Valider */}
+                <StatCard
+                    title="Rapports à Valider"
+                    value={stats.pendingReports}
+                    trendValue={stats.pendingReports > 0 ? "Action requise" : "Tout est validé"}
+                    icon={Bell}
+                    color={stats.pendingReports > 0 ? "red" : "indigo"}
+                />
+            </div>
+        );
+    };
+
     return (
         <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
             {/* Header Section */}
@@ -53,7 +145,7 @@ const DashboardPage = () => {
                 <div>
                     <h1 className="text-3xl font-bold text-slate-900 tracking-tight">{getTitle()}</h1>
                     <p className="text-slate-500 mt-1">
-                        {user?.role === ROLES.DIRECTION
+                        {user?.role === ROLES.DIRECTION || user?.role === ROLES.ADMIN
                             ? "Vue d'ensemble de l'activité hospitalière."
                             : "Pilotage de votre service en temps réel."}
                     </p>
@@ -62,69 +154,44 @@ const DashboardPage = () => {
                     <span className="text-sm font-medium text-slate-600 px-2 capitalize">
                         {format(new Date(), 'EEEE d MMMM yyyy', { locale: fr })}
                     </span>
-                    <button className="p-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors relative">
-                        <Bell size={20} />
-                        {stats.pendingReports > 0 && (
-                            <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full border-2 border-white"></span>
-                        )}
-                    </button>
+                    <div className="p-2 bg-blue-50 text-blue-600 rounded-lg">
+                        <Activity size={20} />
+                    </div>
                 </div>
             </div>
 
             {/* Stats Overview */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                <StatCard
-                    title="Consultations (Mois)"
-                    value={stats.consultations.value}
-                    trend={stats.consultations.direction}
-                    trendValue={stats.consultations.trend}
-                    icon={Stethoscope}
-                    color="blue"
-                />
-                <StatCard
-                    title="Hospitalisations"
-                    value={stats.hospitalizations.current}
-                    subValue={`/ ${stats.hospitalizations.capacity} lits`}
-                    trend={stats.hospitalizations.direction}
-                    trendValue={stats.hospitalizations.trend}
-                    icon={BedDouble}
-                    color="purple"
-                />
-                <StatCard
-                    title="Taux d'Occupation"
-                    value={stats.occupancy.value}
-                    trend={stats.occupancy.direction}
-                    trendValue={stats.occupancy.trend}
-                    icon={Activity}
-                    color="orange"
-                />
-                <StatCard
-                    title="Rapports à Valider"
-                    value={stats.pendingReports}
-                    trendValue={stats.pendingReports > 0 ? "Action requise" : "À jour"}
-                    icon={Users}
-                    color="red"
-                />
-            </div>
+            {renderCards()}
 
             {/* Main Content Grid */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                {/* Charts Area (2/3 width) */}
+                {/* Charts Area (2/3 width) - Toujours pertinent pour tout le monde */}
                 <div className="lg:col-span-2 space-y-8">
                     <div className="h-[400px]">
                         <ActivityChart
-                            title="Activité Hebdomadaire (Entrées)"
+                            title="Activité Hebdomadaire (Entrées + Consultations)"
                             data={stats.activityTrend}
                         />
                     </div>
                 </div>
 
-                {/* Side Content (1/3 width) - Liste des sous-services ou infos */}
+                {/* Side Content (1/3 width) */}
                 <div className="space-y-8">
                     {/* On affiche la liste des services seulement pour la Direction */}
-                    {user?.role === ROLES.DIRECTION && <ServiceList />}
+                    {(user?.role === ROLES.DIRECTION || user?.role === ROLES.ADMIN) && <ServiceList />}
 
-                    {/* Pour les services, on pourrait afficher autre chose, ex: Dernières entrées */}
+                    {/* Pour les services, on pourrait afficher un récapitulatif rapide ou des messages */}
+                    {(user?.role === ROLES.SERVICE || user?.role === ROLES.CHEF_SERVICE) && (
+                        <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+                            <h3 className="font-semibold text-slate-800 mb-4">Actions Rapides</h3>
+                            <button className="w-full py-2 px-4 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition" onClick={() => window.location.href = '/daily-entry'}>
+                                + Nouveau Rapport Quotidien
+                            </button>
+                            <div className="mt-4 text-sm text-slate-500">
+                                Assurez-vous de soumettre votre rapport avant 9h00.
+                            </div>
+                        </div>
+                    )}
                 </div>
             </div>
         </div>

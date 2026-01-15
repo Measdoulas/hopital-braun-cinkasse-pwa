@@ -43,14 +43,11 @@ export class DashboardService {
         // On va prendre le rapport le plus récent pour chaque service.
         const hospitalizations = this._calculateCurrentHospitalizations(reportsLast30Days, targetServicesList);
 
-        // KPI: Taux d'Occupation
-        const occupancy = this._calculateOccupancy(hospitalizations.current, targetServicesList);
+        // KPI: Admissions & Sorties du jour (pour vue "Temps Réel")
+        const dailyMovements = this._calculateDailyMovements(reportsLast30Days, todayStr);
 
-        // KPI: Rapports en attente (Weekly)
-        // On utilise getWeeklyReports qui est déjà capable de fetcher "tout"
-        // Mais on va filtrer en mémoire pour l'instant
-        const recentWeeklyReports = await this.storage.getWeeklyReports();
-        const pendingReports = this._countPendingReports(user, recentWeeklyReports, targetServicesList);
+        // KPI: Date du dernier rapport (pour Services)
+        const lastReportDate = this._getLastReportDate(reportsLast30Days);
 
         // Charts: Activité (7 derniers jours)
         const activityTrend = await this._calculateActivityTrend(targetServiceId);
@@ -58,9 +55,11 @@ export class DashboardService {
         return {
             consultations,
             hospitalizations,
-            occupancy,
+            // occupancy, // Supprimé à la demande utilisateur
             pendingReports,
-            activityTrend
+            activityTrend,
+            dailyMovements,
+            lastReportDate
         };
     }
 
@@ -136,6 +135,39 @@ export class DashboardService {
             trend: "Occupation",
             direction: direction
         };
+    }
+
+    _calculateDailyMovements(reports, dateStr) {
+        let admissions = 0;
+        let sorties = 0;
+
+        const todaysReports = reports.filter(r => r.date === dateStr);
+        todaysReports.forEach(r => {
+            admissions += (parseInt(r.data?.mouvements?.entrees) || 0);
+
+            const s = r.data?.mouvements?.sorties || {};
+            const totalSorties =
+                (parseInt(s.deces) || 0) +
+                (parseInt(s.aDomicile) || 0) +
+                (parseInt(s.referes) || 0) +
+                (parseInt(s.transferts) || 0) +
+                (parseInt(s.fugitifs) || 0) +
+                (parseInt(s.observ) || 0);
+
+            sorties += totalSorties;
+        });
+
+        return {
+            admissions,
+            sorties
+        };
+    }
+
+    _getLastReportDate(reports) {
+        if (!reports || reports.length === 0) return null;
+        // Trier par date desc
+        reports.sort((a, b) => new Date(b.date) - new Date(a.date));
+        return reports[0].date;
     }
 
     _countPendingReports(user, allWeeklyReports, targetServiceIds) {
