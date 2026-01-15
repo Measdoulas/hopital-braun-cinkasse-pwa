@@ -25,7 +25,8 @@ const StatisticsPage = () => {
         guerisons: 0,
         occupationMoyenne: 0,
         byService: [],
-        trendData: []
+        trendData: [],
+        actsData: []
     });
 
     // Filtre Service : Bloqué pour les chefs, ouvert pour la Direction
