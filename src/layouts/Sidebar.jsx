@@ -68,7 +68,7 @@ const Sidebar = ({ className, onClose }) => {
                 to: '/parametres',
                 icon: Settings,
                 label: 'Paramètres',
-                roles: [ROLES.DIRECTION, ROLES.ADMIN]
+                roles: [ROLES.DIRECTION, ROLES.ADMIN, ROLES.CHEF_SERVICE]
             },
         ];
         return items.filter(item => item.roles.includes(role));
