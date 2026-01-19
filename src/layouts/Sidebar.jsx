@@ -41,6 +41,12 @@ const Sidebar = ({ className, onClose }) => {
                 roles: [ROLES.SERVICE]
             },
             {
+                to: '/rapports-mensuels',
+                icon: FileText, // Or Calendar if imported
+                label: 'Rapports Mensuels',
+                roles: [ROLES.SERVICE, ROLES.CHEF_SERVICE, ROLES.DIRECTION, ROLES.ADMIN]
+            },
+            {
                 to: '/validation',
                 icon: FileText,
                 label: 'Validation',

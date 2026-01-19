@@ -121,7 +121,7 @@ const DashboardPage = () => {
                     title="Consultations (Mois)"
                     value={stats.consultations.value}
                     trend={stats.consultations.direction}
-                    trendValue="Volume mensuel"
+                    trendValue={stats.consultations.trendValue} // Updated
                     icon={Stethoscope}
                     color="purple"
                 />

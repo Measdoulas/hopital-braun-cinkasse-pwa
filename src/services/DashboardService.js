@@ -27,28 +27,33 @@ export class DashboardService {
         // 2. Définir les périodes
         const today = new Date();
         const startOfCurrentMonth = format(startOfMonth(today), 'yyyy-MM-dd');
-        const startOfLastWeek = format(subDays(today, 7), 'yyyy-MM-dd'); // Pour les trends
         const todayStr = format(today, 'yyyy-MM-dd');
 
-        // 3. Récupérer les rapports pertinents (Daily & Weekly)
-        // On récupère large pour calculer les trends
-        const reportsLast30Days = await this.storage.getDailyReportsInRange(startOfCurrentMonth, todayStr, targetServiceId);
+        // Période précédente (M-1 à la même date pour comparaison équitable)
+        const prevMonthDate = subDays(today, 30); // Approx
+        const startOfPrevMonth = format(startOfMonth(prevMonthDate), 'yyyy-MM-dd');
+        // On veut comparer 1er-19 Jan vs 1er-19 Déc
+        const endOfPrevMonth = format(prevMonthDate, 'yyyy-MM-dd');
+
+        // 3. Récupérer les rapports pertinents
+        // Période Actuelle
+        const reportsCurrent = await this.storage.getDailyReportsInRange(startOfCurrentMonth, todayStr, targetServiceId);
+        // Période Précédente
+        const reportsPrev = await this.storage.getDailyReportsInRange(startOfPrevMonth, endOfPrevMonth, targetServiceId);
 
         // 4. Calculer les KPIs
 
-        // KPI: Consultations/Entrées (Mois courant)
-        const consultations = this._calculateConsultations(reportsLast30Days);
+        // KPI: Consultations/Entrées (Mois courant vs Précédent)
+        const consultations = this._calculateConsultations(reportsCurrent, reportsPrev);
 
-        // KPI: Hospitalisations (Dernier état connu ou moyenne)
-        // Pour être précis, il faudrait le dernier rapport de chaque service.
-        // On va prendre le rapport le plus récent pour chaque service.
-        const hospitalizations = this._calculateCurrentHospitalizations(reportsLast30Days, targetServicesList);
+        // KPI: Hospitalisations (Dernier état connu)
+        const hospitalizations = this._calculateCurrentHospitalizations(reportsCurrent, targetServicesList);
 
         // KPI: Admissions & Sorties du jour (pour vue "Temps Réel")
-        const dailyMovements = this._calculateDailyMovements(reportsLast30Days, todayStr);
+        const dailyMovements = this._calculateDailyMovements(reportsCurrent, todayStr);
 
         // KPI: Date du dernier rapport (pour Services)
-        const lastReportDate = this._getLastReportDate(reportsLast30Days);
+        const lastReportDate = this._getLastReportDate(reportsCurrent);
 
         // KPI: Rapports en attente (Weekly)
         const recentWeeklyReports = await this.storage.getWeeklyReports();
@@ -63,7 +68,6 @@ export class DashboardService {
         return {
             consultations,
             hospitalizations,
-            // occupancy, // Supprimé à la demande utilisateur
             pendingReports,
             activityTrend,
             dailyMovements,
@@ -74,22 +78,44 @@ export class DashboardService {
 
     // --- Helpers ---
 
-    _calculateConsultations(reports) {
-        let total = 0;
-        reports.forEach(r => {
-            // On somme les "entrees" (ou consultations si dispo dans data)
-            // Dans le modèle actuel: mouvements.entrees est le KPI clé
-            const entrees = parseInt(r.data?.mouvements?.entrees) || 0;
-            const consult = parseInt(r.data?.consultations?.total) || 0;
-            // Si pas de section consultation explicite, on utilise entrées, sinon on ajoute.
-            // Pour simplifier l'affichage "Activité", on prend entrées hospitalisation + consults externes si dispo
-            total += (entrees + consult);
-        });
+    _calculateConsultations(reports, prevReports = []) {
+        const sumReports = (list) => {
+            let total = 0;
+            list.forEach(r => {
+                const entrees = parseInt(r.data?.mouvements?.entrees) || 0;
+                const consult = parseInt(r.data?.consultations?.total) || 0;
+                total += (entrees + consult);
+            });
+            return total;
+        };
+
+        const currentTotal = sumReports(reports);
+        const prevTotal = sumReports(prevReports);
+
+        let percent = 0;
+        let direction = "neutral";
+        let trendLabel = "Stable";
+
+        if (prevTotal > 0) {
+            percent = Math.round(((currentTotal - prevTotal) / prevTotal) * 100);
+            if (percent > 0) {
+                direction = "up";
+                trendLabel = `+${percent}%`;
+            } else if (percent < 0) {
+                direction = "down";
+                trendLabel = `${percent}%`;
+            }
+        } else if (currentTotal > 0) {
+            direction = "up";
+            trendLabel = "Nouveau";
+        }
 
         return {
-            value: total,
-            trend: "Mois en cours",
-            direction: "neutral"
+            value: currentTotal,
+            trend: direction,
+            direction: direction, // Double field for compatibility
+            trendValue: trendLabel,
+            percent: percent
         };
     }
 

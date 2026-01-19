@@ -8,6 +8,7 @@ const LoginPage = lazy(() => import('./modules/auth/LoginPage'));
 const DashboardPage = lazy(() => import('./modules/dashboard/DashboardPage'));
 const DailyEntryPage = lazy(() => import('./modules/daily-entry/DailyEntryPage'));
 const WeeklyReportPage = lazy(() => import('./modules/weekly-report/WeeklyReportPage'));
+const MonthlyReportPage = lazy(() => import('./modules/monthly-report/MonthlyReportPage'));
 const ValidationPage = lazy(() => import('./modules/validation/ValidationPage'));
 const HistoryPage = lazy(() => import('./modules/history/HistoryPage'));
 const StatisticsPage = lazy(() => import('./modules/statistics/StatisticsPage'));
@@ -59,6 +60,7 @@ function App() {
               <Route index element={<DashboardPage />} />
               <Route path="saisie" element={<DailyEntryPage />} />
               <Route path="rapports" element={<WeeklyReportPage />} />
+              <Route path="rapports-mensuels" element={<MonthlyReportPage />} />
               <Route path="validation" element={<ValidationPage />} />
               <Route path="historique" element={<HistoryPage />} />
               <Route path="statistiques" element={<StatisticsPage />} />

@@ -241,3 +241,71 @@ export class SupabaseStorageService {
     // Note: getAllKeys() ne peut pas être implémenté efficacement en SQL pur
     // Il faut refactorer les appelants pour utiliser des méthodes spécifiques (getReports, getHistory, etc.)
 }
+
+    // ==================== MONTHLY REPORTS ====================
+
+    /**
+     * Récupère un rapport mensuel
+     * @param {string} serviceId
+     * @param {number} month
+     * @param {number} year
+     */
+    async getMonthlyReport(serviceId, month, year) {
+    try {
+        const { data, error } = await supabase
+            .from('monthly_reports')
+            .select('*')
+            .eq('service_id', serviceId)
+            .eq('month', month)
+            .eq('year', year)
+            .single();
+
+        if (error) {
+            if (error.code === 'PGRST116') return null; // Not found
+            throw error;
+        }
+
+        return {
+            serviceId: data.service_id,
+            month: data.month,
+            year: data.year,
+            status: data.status,
+            data: data.data,
+            validatedAt: data.validated_at,
+            validatedBy: data.validated_by
+        };
+    } catch (error) {
+        console.error('Error fetching monthly report:', error);
+        return null;
+    }
+}
+
+    /**
+     * Sauvegarde un rapport mensuel
+     * @param {object} report
+     */
+    async saveMonthlyReport(report) {
+    try {
+        const payload = {
+            service_id: report.serviceId,
+            month: report.month,
+            year: report.year,
+            status: report.status || 'draft',
+            data: report.data,
+            updated_at: new Date().toISOString()
+        };
+
+        const { error } = await supabase
+            .from('monthly_reports')
+            .upsert(payload, {
+                onConflict: 'service_id,month,year'
+            });
+
+        if (error) throw error;
+        return true;
+    } catch (error) {
+        console.error('Error saving monthly report:', error);
+        return false;
+    }
+}
+}

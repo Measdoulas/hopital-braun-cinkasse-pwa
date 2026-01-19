@@ -43,3 +43,26 @@ create policy "Enable all access for authenticated users" on public.daily_report
 
 create policy "Enable all access for authenticated users" on public.weekly_reports
   for all using (auth.role() = 'authenticated');
+
+-- 4. Table des rapports mensuels
+create table public.monthly_reports (
+  id uuid default gen_random_uuid() primary key,
+  service_id text not null,
+  month integer not null,
+  year integer not null,
+  status text not null default 'draft', -- draft, validated
+  data jsonb not null default '{}'::jsonb,
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null,
+  updated_at timestamp with time zone default timezone('utc'::text, now()) not null,
+  validated_at timestamp with time zone,
+  validated_by text,
+  user_id uuid references auth.users(id),
+  
+  unique(service_id, month, year)
+);
+
+-- Sécurité (RLS)
+alter table public.monthly_reports enable row level security;
+
+create policy "Enable all access for authenticated users" on public.monthly_reports
+  for all using (auth.role() = 'authenticated');

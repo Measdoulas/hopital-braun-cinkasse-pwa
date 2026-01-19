@@ -20,6 +20,8 @@ const StatisticsPage = () => {
         start: format(startOfMonth(new Date()), 'yyyy-MM-dd'),
         end: format(new Date(), 'yyyy-MM-dd')
     });
+    const [compareMode, setCompareMode] = useState(false);
+    const [prevStats, setPrevStats] = useState(null); // Pour la comparaison
     const [stats, setStats] = useState({
         admissions: 0,
         deces: 0,
@@ -48,6 +50,22 @@ const StatisticsPage = () => {
         );
     };
 
+    const TrendIndicator = ({ current, prev }) => {
+        if (!compareMode || prev === undefined || prev === null) return null;
+        if (prev === 0) return <span className="text-xs text-slate-400 ml-2">(Nouveau)</span>;
+
+        const diff = current - prev;
+        const percent = Math.round((diff / prev) * 100);
+        const isPositive = diff > 0;
+        const colorClass = isPositive ? 'text-green-600' : diff < 0 ? 'text-red-600' : 'text-slate-500';
+
+        return (
+            <div className={`flex items-center text-xs font-bold ml-2 ${colorClass}`}>
+                {isPositive ? '↑' : diff < 0 ? '↓' : '-'} {Math.abs(percent)}%
+            </div>
+        );
+    };
+
     const getChartTitle = () => {
         if (selectedMetrics.length === 0) return "Aucune donnée sélectionnée";
 
@@ -69,188 +87,157 @@ const StatisticsPage = () => {
 
     useEffect(() => {
         loadMedicalStats();
-    }, [period, selectedService]);
+    }, [period, selectedService, compareMode]);
+
+    const fetchStatsForPeriod = async (start, end, serviceFilter) => {
+        const storage = SupabaseStorageService.getInstance();
+        const reports = await storage.getDailyReportsInRange(start, end, serviceFilter);
+
+        let totalAdmissions = 0;
+        let totalDeces = 0;
+        let totalGuerisons = 0;
+        let sumOccupancy = 0;
+        let countReports = 0;
+
+        const serviceAggregation = {};
+        const dailyTrend = {};
+        const actsAggregation = {};
+
+        // Initialiser aggregation services
+        if (serviceFilter) {
+            const serviceDef = Object.values(SERVICES).find(s => s.id === serviceFilter);
+            if (serviceDef) {
+                serviceAggregation[serviceDef.id] = { name: serviceDef.name, admissions: 0, deces: 0, guerisons: 0, referes: 0, transferts: 0, evasions: 0, observ: 0, occupancy: 0, count: 0 };
+            }
+        } else {
+            Object.values(SERVICES).forEach(s => {
+                serviceAggregation[s.id] = { name: s.name, admissions: 0, deces: 0, guerisons: 0, referes: 0, transferts: 0, evasions: 0, observ: 0, occupancy: 0, count: 0 };
+            });
+        }
+
+        // Helper label
+        const getActLabel = (actId, serviceId) => {
+            // (Logic kept identical to original, abbreviated for brevity in prompt but full in code)
+            if (!SERVICE_CONFIGS) return actId;
+            const serviceConfig = SERVICE_CONFIGS[serviceId];
+            if (serviceConfig?.actTypes) {
+                const act = serviceConfig.actTypes.find(a => a.id === actId);
+                if (act) return act.label;
+            }
+            try {
+                for (const conf of Object.values(SERVICE_CONFIGS)) {
+                    const act = conf.actTypes?.find(a => a.id === actId);
+                    if (act) return act.label;
+                }
+            } catch (e) { }
+            return actId;
+        };
+
+        reports.forEach(r => {
+            const mvts = r.data?.mouvements || {};
+            const sorties = mvts.sorties || {};
+
+            const admissions = parseInt(mvts.entrees) || 0;
+            const deces = parseInt(sorties.deces) || 0;
+            const guerisons = parseInt(sorties.aDomicile) || 0;
+            const referes = parseInt(sorties.referes) || 0;
+            const transferts = parseInt(sorties.transferts) || 0;
+            const evasions = parseInt(sorties.fugitifs) || 0;
+            const observ = parseInt(sorties.observ) || 0;
+            const effectifFin = parseInt(mvts.effectifFin) || 0;
+
+            totalAdmissions += admissions;
+            totalDeces += deces;
+            totalGuerisons += guerisons;
+            sumOccupancy += effectifFin;
+            countReports++;
+
+            if (serviceAggregation[r.serviceId]) {
+                const s = serviceAggregation[r.serviceId];
+                s.admissions += admissions;
+                s.deces += deces;
+                s.guerisons += guerisons;
+                s.referes += referes;
+                s.transferts += transferts;
+                s.evasions += evasions;
+                s.observ += observ;
+                s.occupancy += effectifFin;
+                s.count++;
+            }
+
+            if (!dailyTrend[r.date]) {
+                dailyTrend[r.date] = { date: r.date, admissions: 0, deces: 0, guerisons: 0, referes: 0, transferts: 0, evasions: 0, observ: 0 };
+            }
+            dailyTrend[r.date].admissions += admissions;
+            dailyTrend[r.date].deces += deces;
+            dailyTrend[r.date].guerisons += guerisons;
+            dailyTrend[r.date].referes += referes;
+            dailyTrend[r.date].transferts += transferts;
+            dailyTrend[r.date].evasions += evasions;
+            dailyTrend[r.date].observ += observ;
+
+            const reportActs = r.data?.autres?.actes || {};
+            Object.entries(reportActs).forEach(([actId, count]) => {
+                const val = parseInt(count) || 0;
+                if (val > 0) {
+                    if (!actsAggregation[actId]) {
+                        actsAggregation[actId] = { id: actId, count: 0, name: getActLabel(actId, r.serviceId) };
+                    }
+                    actsAggregation[actId].count += val;
+                }
+            });
+        });
+
+        const avgOccupancy = countReports > 0 ? Math.round(sumOccupancy / countReports) : 0;
+
+        const byServiceData = Object.values(serviceAggregation)
+            .filter(s => s.count > 0 || (selectedService !== 'all' && s.count === 0))
+            .map(s => ({ ...s, avgOccupancy: s.count > 0 ? Math.round(s.occupancy / s.count) : 0 }));
+
+        const trendData = Object.values(dailyTrend).sort((a, b) => new Date(a.date) - new Date(b.date));
+
+        const actsData = Object.values(actsAggregation)
+            .sort((a, b) => b.count - a.count)
+            .slice(0, 15);
+
+        return {
+            admissions: totalAdmissions,
+            deces: totalDeces,
+            guerisons: totalGuerisons,
+            occupationMoyenne: avgOccupancy,
+            byService: byServiceData,
+            trendData: trendData,
+            actsData: actsData
+        };
+    };
 
     const loadMedicalStats = async () => {
         setLoading(true);
-        const storage = SupabaseStorageService.getInstance();
-
         try {
-            // 1. Récupérer les rapports sur la période
             const serviceFilter = selectedService === 'all' ? null : selectedService;
-            const reports = await storage.getDailyReportsInRange(period.start, period.end, serviceFilter);
 
-            // 2. Agréger les données médicales
-            let totalAdmissions = 0;
-            let totalDeces = 0;
-            let totalGuerisons = 0;
-            let sumOccupancy = 0;
-            let countReports = 0;
+            // 1. Current Period
+            const currentStats = await fetchStatsForPeriod(period.start, period.end, serviceFilter);
+            setStats(currentStats);
 
-            const serviceAggregation = {};
-            const dailyTrend = {};
-            const actsAggregation = {};
+            // 2. Previous Period (if Compare Mode)
+            if (compareMode) {
+                const startCurrent = new Date(period.start);
+                const endCurrent = new Date(period.end);
+                const duration = endCurrent - startCurrent;
 
-            // Initialiser aggregation services
-            // Pour les Services/Chefs: seulement LEUR service
-            // Pour Direction/Admin: tous les services
-            if (serviceFilter) {
-                // Un service spécifique sélectionné (Service/Chef)
-                const serviceDef = Object.values(SERVICES).find(s => s.id === serviceFilter);
-                if (serviceDef) {
-                    serviceAggregation[serviceDef.id] = {
-                        name: serviceDef.name,
-                        admissions: 0,
-                        deces: 0,
-                        guerisons: 0,
-                        referes: 0,
-                        transferts: 0,
-                        evasions: 0,
-                        observ: 0,
-                        occupancy: 0,
-                        count: 0
-                    };
-                }
+                // Période précédente de même durée, terminant la veille du début actuel
+                const endPrev = subDays(startCurrent, 1);
+                const startPrev = new Date(endPrev.getTime() - duration);
+
+                const prevStatsData = await fetchStatsForPeriod(format(startPrev, 'yyyy-MM-dd'), format(endPrev, 'yyyy-MM-dd'), serviceFilter);
+                setPrevStats(prevStatsData);
             } else {
-                // Direction/Admin: tous les services
-                Object.values(SERVICES).forEach(s => {
-                    serviceAggregation[s.id] = {
-                        name: s.name,
-                        admissions: 0,
-                        deces: 0,
-                        guerisons: 0,
-                        referes: 0,
-                        transferts: 0,
-                        evasions: 0,
-                        observ: 0,
-                        occupancy: 0,
-                        count: 0
-                    };
-                });
+                setPrevStats(null);
             }
 
-            // Helper pour trouver le label d'un acte
-            const getActLabel = (actId, serviceId) => {
-                if (!SERVICE_CONFIGS) return actId;
-
-                const serviceConfig = SERVICE_CONFIGS[serviceId];
-                if (serviceConfig?.actTypes) {
-                    const act = serviceConfig.actTypes.find(a => a.id === actId);
-                    if (act) return act.label;
-                }
-
-                try {
-                    for (const conf of Object.values(SERVICE_CONFIGS)) {
-                        const act = conf.actTypes?.find(a => a.id === actId);
-                        if (act) return act.label;
-                    }
-                } catch (e) {
-                    console.warn("Error looking up act label", e);
-                }
-                return actId;
-            };
-
-            reports.forEach(r => {
-                const mvts = r.data?.mouvements || {};
-                const sorties = mvts.sorties || {};
-
-                const admissions = parseInt(mvts.entrees) || 0;
-                const deces = parseInt(sorties.deces) || 0;
-                const guerisons = parseInt(sorties.aDomicile) || 0;
-                const referes = parseInt(sorties.referes) || 0;
-                const transferts = parseInt(sorties.transferts) || 0;
-                const evasions = parseInt(sorties.fugitifs) || 0;
-                const observ = parseInt(sorties.observ) || 0;
-                const effectifFin = parseInt(mvts.effectifFin) || 0;
-
-                // Global totals
-                totalAdmissions += admissions;
-                totalDeces += deces;
-                totalGuerisons += guerisons;
-                sumOccupancy += effectifFin;
-                countReports++;
-
-                // Service aggregation
-                if (serviceAggregation[r.serviceId]) {
-                    const s = serviceAggregation[r.serviceId];
-                    s.admissions += admissions;
-                    s.deces += deces;
-                    s.guerisons += guerisons;
-                    s.referes += referes;
-                    s.transferts += transferts;
-                    s.evasions += evasions;
-                    s.observ += observ;
-                    s.occupancy += effectifFin;
-                    s.count++;
-                }
-
-                // Daily trend
-                if (!dailyTrend[r.date]) {
-                    dailyTrend[r.date] = {
-                        date: r.date,
-                        admissions: 0,
-                        deces: 0,
-                        guerisons: 0,
-                        referes: 0,
-                        transferts: 0,
-                        evasions: 0,
-                        observ: 0
-                    };
-                }
-                dailyTrend[r.date].admissions += admissions;
-                dailyTrend[r.date].deces += deces;
-                dailyTrend[r.date].guerisons += guerisons;
-                dailyTrend[r.date].referes += referes;
-                dailyTrend[r.date].transferts += transferts;
-                dailyTrend[r.date].evasions += evasions;
-                dailyTrend[r.date].observ += observ;
-
-                // Acts Aggregation
-                const reportActs = r.data?.autres?.actes || {};
-                Object.entries(reportActs).forEach(([actId, count]) => {
-                    const val = parseInt(count) || 0;
-                    if (val > 0) {
-                        if (!actsAggregation[actId]) {
-                            actsAggregation[actId] = {
-                                id: actId,
-                                count: 0,
-                                name: getActLabel(actId, r.serviceId)
-                            };
-                        }
-                        actsAggregation[actId].count += val;
-                    }
-                });
-            });
-
-            // Calcul occupation moyenne
-            const avgOccupancy = countReports > 0 ? Math.round(sumOccupancy / countReports) : 0;
-
-            // Préparer données graphiques
-            const byServiceData = Object.values(serviceAggregation)
-                .filter(s => s.count > 0 || (selectedService !== 'all' && s.count === 0))
-                .map(s => ({
-                    ...s,
-                    avgOccupancy: s.count > 0 ? Math.round(s.occupancy / s.count) : 0
-                }));
-
-            const trendData = Object.values(dailyTrend).sort((a, b) => new Date(a.date) - new Date(b.date));
-
-            // Acts Data Sorted (Top 15)
-            const actsData = Object.values(actsAggregation)
-                .sort((a, b) => b.count - a.count)
-                .slice(0, 15);
-
-            setStats({
-                admissions: totalAdmissions,
-                deces: totalDeces,
-                guerisons: totalGuerisons,
-                occupationMoyenne: avgOccupancy,
-                byService: byServiceData,
-                trendData: trendData,
-                actsData: actsData
-            });
         } catch (error) {
-            console.error("Erreur lors du chargement des statistiques:", error);
+            console.error("Erreur stats:", error);
         } finally {
             setLoading(false);
         }
@@ -270,7 +257,7 @@ const StatisticsPage = () => {
                         <p className="text-slate-500">Flux de patients et indicateurs de mortalité</p>
                     </div>
 
-                    <div className="flex flex-wrap gap-2">
+                    <div className="flex flex-wrap gap-2 items-center">
                         <div className="flex items-center gap-2 bg-white p-2 border rounded-lg">
                             <Calendar className="w-4 h-4 text-slate-400" />
                             <input
@@ -286,6 +273,19 @@ const StatisticsPage = () => {
                                 onChange={e => setPeriod({ ...period, end: e.target.value })}
                                 className="text-sm border-none p-0 focus:ring-0"
                             />
+                        </div>
+
+                        {/* Comparaison Toggle */}
+                        <div className="flex items-center gap-2">
+                            <label className="flex items-center gap-2 text-sm text-slate-600 bg-white px-3 py-2 rounded-lg border cursor-pointer hover:bg-slate-50 transition">
+                                <input
+                                    type="checkbox"
+                                    checked={compareMode}
+                                    onChange={(e) => setCompareMode(e.target.checked)}
+                                    className="rounded border-slate-300 text-blue-600 focus:ring-0"
+                                />
+                                Comparer (Période Préc.)
+                            </label>
                         </div>
 
                         {canFilterService && (
@@ -360,7 +360,10 @@ const StatisticsPage = () => {
                         <div className="flex justify-between items-start">
                             <div>
                                 <p className="text-sm font-medium text-slate-500">Admissions Totales</p>
-                                <h3 className="text-3xl font-bold text-blue-600 mt-2">{stats.admissions}</h3>
+                                <div className="flex items-baseline mt-2">
+                                    <h3 className="text-3xl font-bold text-blue-600">{stats.admissions}</h3>
+                                    <TrendIndicator current={stats.admissions} prev={prevStats?.admissions} />
+                                </div>
                             </div>
                             <div className="p-2 bg-blue-50 rounded-lg">
                                 <Users className="w-6 h-6 text-blue-600" />
@@ -374,7 +377,10 @@ const StatisticsPage = () => {
                         <div className="flex justify-between items-start">
                             <div>
                                 <p className="text-sm font-medium text-slate-500">Décès Hospitaliers</p>
-                                <h3 className="text-3xl font-bold text-red-600 mt-2">{stats.deces}</h3>
+                                <div className="flex items-baseline mt-2">
+                                    <h3 className="text-3xl font-bold text-red-600">{stats.deces}</h3>
+                                    <TrendIndicator current={stats.deces} prev={prevStats?.deces} />
+                                </div>
                             </div>
                             <div className="p-2 bg-red-50 rounded-lg">
                                 <AlertCircle className="w-6 h-6 text-red-600" />
@@ -388,7 +394,10 @@ const StatisticsPage = () => {
                         <div className="flex justify-between items-start">
                             <div>
                                 <p className="text-sm font-medium text-slate-500">Sorties (Guérison)</p>
-                                <h3 className="text-3xl font-bold text-green-600 mt-2">{stats.guerisons}</h3>
+                                <div className="flex items-baseline mt-2">
+                                    <h3 className="text-3xl font-bold text-green-600">{stats.guerisons}</h3>
+                                    <TrendIndicator current={stats.guerisons} prev={prevStats?.guerisons} />
+                                </div>
                             </div>
                             <div className="p-2 bg-green-50 rounded-lg">
                                 <Activity className="w-6 h-6 text-green-600" />
@@ -402,7 +411,10 @@ const StatisticsPage = () => {
                         <div className="flex justify-between items-start">
                             <div>
                                 <p className="text-sm font-medium text-slate-500">Occupation Moy. (Lits)</p>
-                                <h3 className="text-3xl font-bold text-purple-600 mt-2">{stats.occupationMoyenne}</h3>
+                                <div className="flex items-baseline mt-2">
+                                    <h3 className="text-3xl font-bold text-purple-600">{stats.occupationMoyenne}</h3>
+                                    <TrendIndicator current={stats.occupationMoyenne} prev={prevStats?.occupationMoyenne} />
+                                </div>
                             </div>
                             <div className="p-2 bg-purple-50 rounded-lg">
                                 <BedDouble className="w-6 h-6 text-purple-600" />
