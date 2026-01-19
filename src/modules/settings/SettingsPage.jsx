@@ -1,11 +1,15 @@
 import React, { useState } from 'react';
+import { useAuth } from '../../contexts/AuthContext';
 import { Card, CardHeader, CardTitle, CardContent } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
-import { storage } from '../../services/storage'; // Note: ou StorageService.getInstance()
+import { storage } from '../../services/storage';
 import { Settings, Save, RefreshCw, Trash2, Database } from 'lucide-react';
+import { ROLES, SERVICES } from '../../utils/data-models';
+import ServiceConfigSection from './ServiceConfigSection';
 
 const SettingsPage = () => {
+    const { user } = useAuth();
     const [hospitalName, setHospitalName] = useState('Hôpital Braun Cinkassé');
     const [loading, setLoading] = useState(false);
 
@@ -24,6 +28,11 @@ const SettingsPage = () => {
         }, 1000);
     };
 
+    // Déterminer si l'utilisateur est chef de service
+    const isServiceChief = user?.role === ROLES.CHEF_SERVICE;
+    const userService = SERVICES.find(s => s.id === user?.serviceId);
+    const serviceName = userService ? userService.name : (user?.serviceId || 'Votre Service');
+
     return (
         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
             <div>
@@ -32,6 +41,15 @@ const SettingsPage = () => {
             </div>
 
             <div className="grid gap-6">
+
+                {/* Configuration Spécifique Service (Visible uniquement pour les chefs) */}
+                {isServiceChief && (
+                    <ServiceConfigSection
+                        serviceId={user.serviceId}
+                        serviceName={serviceName}
+                    />
+                )}
+
                 {/* Configuration Générale */}
                 <Card>
                     <CardHeader>

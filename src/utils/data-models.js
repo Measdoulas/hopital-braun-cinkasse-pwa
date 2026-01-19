@@ -9,18 +9,30 @@ export const ROLES = {
 };
 
 /**
+ * Configuration par défaut d'un service.
+ * Peut être surchargée par service.
+ */
+export const DEFAULT_SERVICE_CONFIG = {
+    enableMovements: true,      // Entrées/Sorties
+    enableConsultations: true,  // Consultations externes
+    enableActs: true,           // Actes médicaux
+    enableObservations: true,   // Observations générales
+    customOptions: []           // Champs personnalisés [{ id, label, type }]
+};
+
+/**
  * Liste des services hospitaliers avec leurs identifiants et configurations.
  */
 export const SERVICES = [
-    { id: 'gyneco', name: 'Gynécologie-Obstétrique', hasBeds: true, defaultBeds: 5 },
-    { id: 'chirurgie', name: 'Chirurgie', hasBeds: true, defaultBeds: 15 },
-    { id: 'bloc', name: 'Bloc Opératoire', hasBeds: false },
-    { id: 'medecine', name: 'Médecine Générale', hasBeds: true, defaultBeds: 25 },
-    { id: 'pediatrie', name: 'Pédiatrie', hasBeds: true, defaultBeds: 10 },
-    { id: 'laboratoire', name: 'Laboratoire', hasBeds: false },
-    { id: 'radiologie', name: 'Radiologie / Imagerie', hasBeds: false },
-    { id: 'cdt', name: 'Kinésithérapie', hasBeds: false },
-    { id: 'ophtalmo', name: 'Ophtalmologie', hasBeds: false },
+    { id: 'gyneco', name: 'Gynécologie-Obstétrique', hasBeds: true, defaultBeds: 5, config: { ...DEFAULT_SERVICE_CONFIG } },
+    { id: 'chirurgie', name: 'Chirurgie', hasBeds: true, defaultBeds: 15, config: { ...DEFAULT_SERVICE_CONFIG } },
+    { id: 'bloc', name: 'Bloc Opératoire', hasBeds: false, config: { ...DEFAULT_SERVICE_CONFIG, enableMovements: false, enableConsultations: false } },
+    { id: 'medecine', name: 'Médecine Générale', hasBeds: true, defaultBeds: 25, config: { ...DEFAULT_SERVICE_CONFIG } },
+    { id: 'pediatrie', name: 'Pédiatrie', hasBeds: true, defaultBeds: 10, config: { ...DEFAULT_SERVICE_CONFIG } },
+    { id: 'laboratoire', name: 'Laboratoire', hasBeds: false, config: { ...DEFAULT_SERVICE_CONFIG, enableMovements: false, enableConsultations: false } },
+    { id: 'radiologie', name: 'Radiologie / Imagerie', hasBeds: false, config: { ...DEFAULT_SERVICE_CONFIG, enableMovements: false, enableConsultations: false } },
+    { id: 'cdt', name: 'Kinésithérapie', hasBeds: false, config: { ...DEFAULT_SERVICE_CONFIG, enableMovements: false } },
+    { id: 'ophtalmo', name: 'Ophtalmologie', hasBeds: false, config: { ...DEFAULT_SERVICE_CONFIG, enableMovements: false } },
 ];
 
 /**
