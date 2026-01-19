@@ -16,7 +16,7 @@ const NumberField = ({ label, value, onChange, readOnly, className }) => (
     </div>
 );
 
-const PatientMovementSection = ({ data, onChange, readOnly = false }) => {
+const PatientMovementSection = ({ data, onChange, readOnly = false, hideObservation = false }) => {
     // Structure attendue de data: { effectifDebut, entrees, sorties: { aDomicile, deces, referes, transferts, fugitifs, observ, autres }, effectifFin }
 
     const updateField = (field, value) => {
@@ -73,7 +73,10 @@ const PatientMovementSection = ({ data, onChange, readOnly = false }) => {
                         <NumberField label="Référés (Vers ext.)" value={s.referes} onChange={(v) => updateSortie('referes', v)} readOnly={readOnly} />
                         <NumberField label="Transférés (Interne)" value={s.transferts} onChange={(v) => updateSortie('transferts', v)} readOnly={readOnly} />
                         <NumberField label="Évadés" value={s.fugitifs} onChange={(v) => updateSortie('fugitifs', v)} readOnly={readOnly} />
-                        <NumberField label="Mise en OBS" value={s.observ} onChange={(v) => updateSortie('observ', v)} readOnly={readOnly} />
+                        <NumberField label="Évadés" value={s.fugitifs} onChange={(v) => updateSortie('fugitifs', v)} readOnly={readOnly} />
+                        {!hideObservation && (
+                            <NumberField label="Mise en OBS" value={s.observ} onChange={(v) => updateSortie('observ', v)} readOnly={readOnly} />
+                        )}
                         <NumberField label="Sorties c/ Avis Médical" value={s.contreAvis} onChange={(v) => updateSortie('contreAvis', v)} readOnly={readOnly} />
                         <NumberField label="Autres Sorties" value={s.autres} onChange={(v) => updateSortie('autres', v)} readOnly={readOnly} />
                     </div>

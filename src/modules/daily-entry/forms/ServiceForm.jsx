@@ -19,6 +19,7 @@ const ServiceForm = ({ serviceId, data, onChange, readOnly = false }) => {
                     data={data.mouvements}
                     onChange={(val) => handleSectionChange('mouvements', val)}
                     readOnly={readOnly}
+                    hideObservation={config.hideObservation}
                 />
             )}
 
@@ -36,6 +37,7 @@ const ServiceForm = ({ serviceId, data, onChange, readOnly = false }) => {
                 data={data.autres}
                 onChange={(val) => handleSectionChange('autres', val)}
                 readOnly={readOnly}
+                actGroups={config.actGroups}
             />
         </div>
     );
