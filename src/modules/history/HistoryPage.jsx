@@ -10,6 +10,7 @@ import { fr } from 'date-fns/locale';
 import { Search, Calendar, Filter, FileText, Download, ChevronRight } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { ROLES } from '../../utils/data-models';
+import HistoryReportModal from './components/HistoryReportModal';
 
 /**
  * HistoryPage - Historique des Rapports
@@ -30,6 +31,7 @@ const HistoryPage = () => {
     const [filterService, setFilterService] = useState(initialService);
     const [filterType, setFilterType] = useState('all'); // daily, weekly, all
     const [loading, setLoading] = useState(true);
+    const [selectedReport, setSelectedReport] = useState(null);
 
     useEffect(() => {
         loadAllReports();
@@ -290,6 +292,7 @@ const HistoryPage = () => {
                             {filteredReports.map((report) => (
                                 <div
                                     key={report._key}
+                                    onClick={() => setSelectedReport(report)}
                                     className="p-4 border border-slate-200 rounded-xl hover:border-blue-300 hover:shadow-sm transition-all cursor-pointer group"
                                 >
                                     <div className="flex items-center justify-between">
@@ -318,6 +321,19 @@ const HistoryPage = () => {
                     )}
                 </CardContent>
             </Card>
+
+            {/* Modal de visualisation/édition */}
+            {selectedReport && (
+                <HistoryReportModal
+                    report={selectedReport}
+                    user={user}
+                    onClose={() => setSelectedReport(null)}
+                    onSave={() => {
+                        setSelectedReport(null);
+                        loadAllReports(); // Refresh data
+                    }}
+                />
+            )}
         </div>
     );
 };
