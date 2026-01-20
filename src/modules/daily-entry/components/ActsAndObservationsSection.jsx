@@ -16,7 +16,7 @@ const NumberField = ({ label, value, onChange, readOnly }) => (
     </div>
 );
 
-const ActsAndObservationsSection = ({ actTypes = [], actGroups = [], data, onChange, readOnly = false }) => {
+const ActsAndObservationsSection = ({ actTypes = [], actGroups = [], data, onChange, readOnly = false, config = {} }) => {
 
     const updateAct = (actId, val) => {
         const currentActs = data?.actes || {};
@@ -82,26 +82,34 @@ const ActsAndObservationsSection = ({ actTypes = [], actGroups = [], data, onCha
                         📝 Pannes, Décès & Observations
                     </h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className="space-y-1">
-                            <label className="text-sm font-medium text-neutral-700">Pannes / Matériel défectueux</label>
-                            <textarea
-                                className="w-full rounded-lg border border-neutral-300 p-2 text-sm focus:ring-2 focus:ring-primary focus:outline-none min-h-[100px]"
-                                placeholder="Décrire les pannes..."
-                                value={data?.observations?.pannes || ''}
-                                onChange={(e) => updateObs('pannes', e.target.value)}
-                                disabled={readOnly}
-                            />
-                        </div>
-                        <div className="space-y-1">
-                            <label className="text-sm font-medium text-neutral-700">Observations Générales (Décès, événements...)</label>
-                            <textarea
-                                className="w-full rounded-lg border border-neutral-300 p-2 text-sm focus:ring-2 focus:ring-primary focus:outline-none min-h-[100px]"
-                                placeholder="Autres observations importantes..."
-                                value={data?.observations?.general || ''}
-                                onChange={(e) => updateObs('general', e.target.value)}
-                                disabled={readOnly}
-                            />
-                        </div>
+                        {(!config.hiddenFields?.includes('observations.pannes')) && (
+                            <div className="space-y-1">
+                                <label className="text-sm font-medium text-neutral-700">
+                                    {config.labelOverrides?.['observations.pannes'] || 'Pannes / Matériel défectueux'}
+                                </label>
+                                <textarea
+                                    className="w-full rounded-lg border border-neutral-300 p-2 text-sm focus:ring-2 focus:ring-primary focus:outline-none min-h-[100px]"
+                                    placeholder="Décrire les pannes..."
+                                    value={data?.observations?.pannes || ''}
+                                    onChange={(e) => updateObs('pannes', e.target.value)}
+                                    disabled={readOnly}
+                                />
+                            </div>
+                        )}
+                        {(!config.hiddenFields?.includes('observations.general')) && (
+                            <div className="space-y-1">
+                                <label className="text-sm font-medium text-neutral-700">
+                                    {config.labelOverrides?.['observations.general'] || 'Observations Générales (Décès, événements...)'}
+                                </label>
+                                <textarea
+                                    className="w-full rounded-lg border border-neutral-300 p-2 text-sm focus:ring-2 focus:ring-primary focus:outline-none min-h-[100px]"
+                                    placeholder="Autres observations importantes..."
+                                    value={data?.observations?.general || ''}
+                                    onChange={(e) => updateObs('general', e.target.value)}
+                                    disabled={readOnly}
+                                />
+                            </div>
+                        )}
                     </div>
                 </div>
             </CardContent>

@@ -16,7 +16,7 @@ const NumberField = ({ label, value, onChange, readOnly }) => (
     </div>
 );
 
-const ConsultationSection = ({ types = [], data, onChange, readOnly = false }) => {
+const ConsultationSection = ({ types = [], data, onChange, readOnly = false, config = {} }) => {
     // data structure: { [typeId]: count }
 
     const updateCount = (typeId, val) => {
@@ -25,6 +25,11 @@ const ConsultationSection = ({ types = [], data, onChange, readOnly = false }) =
 
     const totalConsultations = Object.values(data || {}).reduce((acc, curr) => acc + (parseInt(curr) || 0), 0);
 
+    const f_total = {
+        isHidden: config.hiddenFields?.includes('consultations.total'),
+        label: config.labelOverrides?.['consultations.total'] || 'Total'
+    };
+
     return (
         <Card className="border shadow-none bg-neutral-50/50">
             <CardContent className="p-4 space-y-4">
@@ -32,9 +37,11 @@ const ConsultationSection = ({ types = [], data, onChange, readOnly = false }) =
                     <h3 className="font-bold text-lg text-primary flex items-center gap-2">
                         🩺 Consultations
                     </h3>
-                    <div className="text-sm font-medium text-neutral-600 bg-white px-3 py-1 rounded-full border">
-                        Total : <span className="font-bold text-primary">{totalConsultations}</span>
-                    </div>
+                    {!f_total.isHidden && (
+                        <div className="text-sm font-medium text-neutral-600 bg-white px-3 py-1 rounded-full border">
+                            {f_total.label} : <span className="font-bold text-primary">{totalConsultations}</span>
+                        </div>
+                    )}
                 </div>
 
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 bg-white p-4 rounded-xl shadow-sm border border-neutral-100">

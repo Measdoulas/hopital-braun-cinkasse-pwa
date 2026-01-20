@@ -51,6 +51,7 @@ const ServiceForm = ({ serviceId, data, onChange, readOnly = false }) => {
                     onChange={(val) => handleSectionChange('mouvements', val)}
                     readOnly={readOnly}
                     hideObservation={staticConfig.hideObservation}
+                    config={dynamicConfig}
                 />
             )}
 
@@ -61,6 +62,7 @@ const ServiceForm = ({ serviceId, data, onChange, readOnly = false }) => {
                     data={data.consultations}
                     onChange={(val) => handleSectionChange('consultations', val)}
                     readOnly={readOnly}
+                    config={dynamicConfig}
                 />
             )}
 
@@ -73,6 +75,7 @@ const ServiceForm = ({ serviceId, data, onChange, readOnly = false }) => {
                     readOnly={readOnly}
                     actGroups={staticConfig.actGroups}
                     hideObservations={!dynamicConfig.enableObservations}
+                    config={dynamicConfig}
                 />
             )}
 

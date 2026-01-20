@@ -17,7 +17,9 @@ export const DEFAULT_SERVICE_CONFIG = {
     enableConsultations: true,  // Consultations externes
     enableActs: true,           // Actes médicaux
     enableObservations: true,   // Observations générales
-    customOptions: []           // Champs personnalisés [{ id, label, type }]
+    customOptions: [],          // Champs personnalisés [{ id, label, type }]
+    labelOverrides: {},         // Surcharges de libellés { 'fieldKey': 'Nouveau Label' }
+    hiddenFields: []            // Liste des IDs de champs masqués ['movements.deces', 'acts.consultation']
 };
 
 /**

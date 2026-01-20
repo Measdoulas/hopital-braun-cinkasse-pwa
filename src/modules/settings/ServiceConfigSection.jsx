@@ -3,12 +3,31 @@ import { Card, CardHeader, CardTitle, CardContent } from '../../components/ui/Ca
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { DEFAULT_SERVICE_CONFIG } from '../../utils/data-models';
-import { Save, Plus, Trash2, Settings, ToggleLeft, ToggleRight, Pencil, X } from 'lucide-react';
+import { Save, Plus, Trash2, Settings, ToggleLeft, ToggleRight, Pencil, X, Eye, EyeOff, ChevronDown, ChevronUp } from 'lucide-react';
+
+const STANDARD_FIELDS = [
+    { key: 'movements.effectifDebut', defaultLabel: 'Effectif Début' },
+    { key: 'movements.entrees', defaultLabel: 'Entrées' },
+    { key: 'movements.totalSorties', defaultLabel: 'Total Sorties' }, // Calculated, usually read-only label
+    { key: 'movements.effectifFin', defaultLabel: 'Effectif Fin' },
+    { key: 'sorties.domicile', defaultLabel: 'Sorties (Guérison/Domicile)' },
+    { key: 'sorties.deces', defaultLabel: 'Décès' },
+    { key: 'sorties.referes', defaultLabel: 'Référés (Vers ext.)' },
+    { key: 'sorties.transferts', defaultLabel: 'Transférés (Interne)' },
+    { key: 'sorties.fugitifs', defaultLabel: 'Évadés / Fugitifs' },
+    { key: 'sorties.observ', defaultLabel: 'Mise en OBS' },
+    { key: 'sorties.contreAvis', defaultLabel: 'Sorties c/ Avis Médical' },
+    { key: 'sorties.autres', defaultLabel: 'Autres Sorties' },
+    { key: 'consultations.total', defaultLabel: 'Consultations (Total)' },
+    { key: 'observations.pannes', defaultLabel: 'Pannes / Matériel' },
+    { key: 'observations.general', defaultLabel: 'Observations Générales' },
+];
 
 const ServiceConfigSection = ({ serviceId, serviceName }) => {
     const [config, setConfig] = useState(DEFAULT_SERVICE_CONFIG);
     const [loading, setLoading] = useState(false);
     const [saved, setSaved] = useState(false);
+    const [isStandardFieldsOpen, setIsStandardFieldsOpen] = useState(false);
 
     // Charger la config au montage
     useEffect(() => {
@@ -99,6 +118,85 @@ const ServiceConfigSection = ({ serviceId, serviceName }) => {
                             onChange={() => toggleFeature('enableObservations')}
                         />
                     </div>
+                </div>
+
+                {/* 2. Champs Standards */}
+                <div className="space-y-4">
+                    <div
+                        className="flex items-center justify-between border-b pb-2 cursor-pointer hover:bg-gray-50 rounded px-1 transition-colors"
+                        onClick={() => setIsStandardFieldsOpen(!isStandardFieldsOpen)}
+                    >
+                        <h3 className="font-semibold text-neutral-900">Personnalisation des Champs Standards</h3>
+                        {isStandardFieldsOpen ? <ChevronUp className="w-5 h-5 text-gray-500" /> : <ChevronDown className="w-5 h-5 text-gray-500" />}
+                    </div>
+
+                    {isStandardFieldsOpen && (
+                        <div className="space-y-3 animate-in fade-in slide-in-from-top-2 duration-300">
+                            {STANDARD_FIELDS.map((field) => {
+                                const isHidden = config.hiddenFields?.includes(field.key);
+                                const currentLabel = config.labelOverrides?.[field.key] || field.defaultLabel;
+
+                                const toggleVisibility = (e) => {
+                                    e.stopPropagation();
+                                    setConfig(prev => {
+                                        const hidden = prev.hiddenFields || [];
+                                        if (hidden.includes(field.key)) {
+                                            return { ...prev, hiddenFields: hidden.filter(k => k !== field.key) };
+                                        } else {
+                                            return { ...prev, hiddenFields: [...hidden, field.key] };
+                                        }
+                                    });
+                                };
+
+                                const updateLabel = (newLabel) => {
+                                    setConfig(prev => ({
+                                        ...prev,
+                                        labelOverrides: {
+                                            ...(prev.labelOverrides || {}),
+                                            [field.key]: newLabel
+                                        }
+                                    }));
+                                };
+
+                                return (
+                                    <div key={field.key} className="flex flex-col md:flex-row gap-3 items-center justify-between bg-white p-3 rounded-md border hover:border-blue-200 transition-colors">
+                                        <div className="flex items-center gap-3 flex-1">
+                                            <div
+                                                className={`p-2 rounded-lg cursor-pointer transition-colors ${!isHidden ? 'bg-blue-100 text-blue-600' : 'bg-gray-100 text-gray-400'}`}
+                                                onClick={toggleVisibility}
+                                                title={isHidden ? "Champ masqué" : "Champ visible"}
+                                            >
+                                                {isHidden ? <ToggleLeft className="w-5 h-5" /> : <ToggleRight className="w-5 h-5" />}
+                                            </div>
+                                            <div className="flex-1">
+                                                <label className="text-xs text-neutral-500 block">Libellé Par Défaut : {field.defaultLabel}</label>
+                                                <Input
+                                                    value={currentLabel}
+                                                    onChange={(e) => updateLabel(e.target.value)}
+                                                    className={`h-8 text-sm ${isHidden ? 'text-gray-400 bg-gray-50' : 'text-neutral-900'}`}
+                                                    disabled={isHidden}
+                                                    placeholder={field.defaultLabel}
+                                                />
+                                            </div>
+                                        </div>
+                                        <div className="w-8 ml-2 flex justify-end">
+                                            {!isHidden && config.labelOverrides?.[field.key] && (
+                                                <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    onClick={() => updateLabel("")}
+                                                    className="text-orange-500 hover:bg-orange-50 h-8 w-8 p-0"
+                                                    title="Réinitialiser"
+                                                >
+                                                    <Settings className="w-4 h-4" />
+                                                </Button>
+                                            )}
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    )}
                 </div>
 
                 {/* 2. Champs Personnalisés */}

@@ -16,7 +16,7 @@ const NumberField = ({ label, value, onChange, readOnly, className }) => (
     </div>
 );
 
-const PatientMovementSection = ({ data, onChange, readOnly = false, hideObservation = false }) => {
+const PatientMovementSection = ({ data, onChange, readOnly = false, hideObservation = false, config = {} }) => {
     // Structure attendue de data: { effectifDebut, entrees, sorties: { aDomicile, deces, referes, transferts, fugitifs, observ, autres }, effectifFin }
 
     const updateField = (field, value) => {
@@ -34,8 +34,21 @@ const PatientMovementSection = ({ data, onChange, readOnly = false, hideObservat
     const s = data?.sorties || {};
 
     // Calcul automatique pour vérification (optionnel, affiché à titre indicatif)
-    const totalSorties = (s.aDomicile || 0) + (s.deces || 0) + (s.referes || 0) + (s.transferts || 0) + (s.fugitifs || 0) + (s.observ || 0) + (s.autres || 0);
+    const totalSorties = (s.aDomicile || 0) + (s.deces || 0) + (s.referes || 0) + (s.transferts || 0) + (s.fugitifs || 0) + (s.observ || 0) + (s.contreAvis || 0) + (s.autres || 0);
     const theoreticalFin = (data?.effectifDebut || 0) + (data?.entrees || 0) - totalSorties;
+
+    // Helper pour récupérer libellé et visibilité
+    const getField = (key, defaultLabel) => {
+        const isHidden = config.hiddenFields?.includes(key);
+        const label = config.labelOverrides?.[key] || defaultLabel;
+        return { isHidden, label };
+    };
+
+    const f_debut = getField('movements.effectifDebut', 'Effectif Début');
+    const f_entrees = getField('movements.entrees', 'Entrées');
+    const f_sortiesTotal = getField('movements.totalSorties', 'Total Sorties');
+    const f_fin = getField('movements.effectifFin', 'Effectif Fin');
+
 
     return (
         <Card className="border shadow-none bg-neutral-50/50">
@@ -46,15 +59,17 @@ const PatientMovementSection = ({ data, onChange, readOnly = false, hideObservat
 
                 {/* Flux Principal */}
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-4 bg-white rounded-xl shadow-sm border border-neutral-100">
-                    <NumberField label="Effectif Début" value={data?.effectifDebut} onChange={(v) => updateField('effectifDebut', v)} readOnly={readOnly} />
-                    <NumberField label="Entrées" value={data?.entrees} onChange={(v) => updateField('entrees', v)} readOnly={readOnly} />
-                    <div className="space-y-1">
-                        <label className="text-xs font-medium text-neutral-600 uppercase tracking-wide">Total Sorties</label>
-                        <div className="px-3 py-2 bg-neutral-100 rounded-lg text-right font-bold text-neutral-700">
-                            {totalSorties}
+                    {!f_debut.isHidden && <NumberField label={f_debut.label} value={data?.effectifDebut} onChange={(v) => updateField('effectifDebut', v)} readOnly={readOnly} />}
+                    {!f_entrees.isHidden && <NumberField label={f_entrees.label} value={data?.entrees} onChange={(v) => updateField('entrees', v)} readOnly={readOnly} />}
+                    {!f_sortiesTotal.isHidden && (
+                        <div className="space-y-1">
+                            <label className="text-xs font-medium text-neutral-600 uppercase tracking-wide">{f_sortiesTotal.label}</label>
+                            <div className="px-3 py-2 bg-neutral-100 rounded-lg text-right font-bold text-neutral-700">
+                                {totalSorties}
+                            </div>
                         </div>
-                    </div>
-                    <NumberField label="Effectif Fin" value={data?.effectifFin} onChange={(v) => updateField('effectifFin', v)} readOnly={readOnly} />
+                    )}
+                    {!f_fin.isHidden && <NumberField label={f_fin.label} value={data?.effectifFin} onChange={(v) => updateField('effectifFin', v)} readOnly={readOnly} />}
                 </div>
 
                 {/* Validation de cohérence */}
@@ -68,17 +83,33 @@ const PatientMovementSection = ({ data, onChange, readOnly = false, hideObservat
                 <div>
                     <label className="text-xs font-bold text-neutral-500 uppercase mb-3 block">Détail des Sorties & Mouvements</label>
                     <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-                        <NumberField label="Sorties (Guérison)" value={s.aDomicile} onChange={(v) => updateSortie('aDomicile', v)} readOnly={readOnly} />
-                        <NumberField label="Décès" value={s.deces} onChange={(v) => updateSortie('deces', v)} readOnly={readOnly} />
-                        <NumberField label="Référés (Vers ext.)" value={s.referes} onChange={(v) => updateSortie('referes', v)} readOnly={readOnly} />
-                        <NumberField label="Transférés (Interne)" value={s.transferts} onChange={(v) => updateSortie('transferts', v)} readOnly={readOnly} />
-                        <NumberField label="Évadés" value={s.fugitifs} onChange={(v) => updateSortie('fugitifs', v)} readOnly={readOnly} />
-                        <NumberField label="Évadés" value={s.fugitifs} onChange={(v) => updateSortie('fugitifs', v)} readOnly={readOnly} />
-                        {!hideObservation && (
-                            <NumberField label="Mise en OBS" value={s.observ} onChange={(v) => updateSortie('observ', v)} readOnly={readOnly} />
-                        )}
-                        <NumberField label="Sorties c/ Avis Médical" value={s.contreAvis} onChange={(v) => updateSortie('contreAvis', v)} readOnly={readOnly} />
-                        <NumberField label="Autres Sorties" value={s.autres} onChange={(v) => updateSortie('autres', v)} readOnly={readOnly} />
+                        {(() => {
+                            const fields = [
+                                { key: 'sorties.domicile', def: 'Sorties (Guérison)', val: s.aDomicile, update: 'aDomicile' },
+                                { key: 'sorties.deces', def: 'Décès', val: s.deces, update: 'deces' },
+                                { key: 'sorties.referes', def: 'Référés (Vers ext.)', val: s.referes, update: 'referes' },
+                                { key: 'sorties.transferts', def: 'Transférés (Interne)', val: s.transferts, update: 'transferts' },
+                                { key: 'sorties.fugitifs', def: 'Évadés', val: s.fugitifs, update: 'fugitifs' },
+                                { key: 'sorties.observ', def: 'Mise en OBS', val: s.observ, update: 'observ', condition: !hideObservation },
+                                { key: 'sorties.contreAvis', def: 'Sorties c/ Avis Médical', val: s.contreAvis, update: 'contreAvis' },
+                                { key: 'sorties.autres', def: 'Autres Sorties', val: s.autres, update: 'autres' },
+                            ];
+
+                            return fields.map(field => {
+                                if (field.condition === false) return null;
+                                const { isHidden, label } = getField(field.key, field.def);
+                                if (isHidden) return null;
+                                return (
+                                    <NumberField
+                                        key={field.key}
+                                        label={label}
+                                        value={field.val}
+                                        onChange={(v) => updateSortie(field.update, v)}
+                                        readOnly={readOnly}
+                                    />
+                                );
+                            });
+                        })()}
                     </div>
                 </div>
             </CardContent>
