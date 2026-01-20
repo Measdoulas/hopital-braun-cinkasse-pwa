@@ -4,7 +4,7 @@ import { fr } from 'date-fns/locale';
 import { Calendar, Save, CheckCircle, AlertCircle, Loader2 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { monthlyReportService } from '../../services/MonthlyReportService';
-import { ROLES, SERVICES } from '../../utils/data-models';
+import { ROLES, SERVICES, REPORT_STATUS } from '../../utils/data-models';
 
 const MonthlyReportPage = () => {
     const { user } = useAuth();
@@ -115,18 +115,18 @@ const MonthlyReportPage = () => {
             ) : report ? (
                 <div className="space-y-6">
                     {/* Status Bar */}
-                    <div className={`p-4 rounded-lg flex items-center justify-between ${report.status === 'validated' ? 'bg-green-50 border border-green-200 text-green-800' : 'bg-yellow-50 border border-yellow-200 text-yellow-800'}`}>
+                    <div className={`p-4 rounded-lg flex items-center justify-between ${report.status === REPORT_STATUS.VALIDATED || report.status === REPORT_STATUS.VALIDATED_BY_CHIEF ? 'bg-green-50 border border-green-200 text-green-800' : 'bg-yellow-50 border border-yellow-200 text-yellow-800'}`}>
                         <div className="flex items-center gap-2 font-medium">
-                            {report.status === 'validated' ? <CheckCircle size={20} /> : <AlertCircle size={20} />}
-                            Statut : {report.status === 'validated' ? 'Validé' : 'Brouillon (Calculé automatiquement)'}
+                            {report.status === REPORT_STATUS.VALIDATED || report.status === REPORT_STATUS.VALIDATED_BY_CHIEF ? <CheckCircle size={20} /> : <AlertCircle size={20} />}
+                            Statut : {report.status === REPORT_STATUS.VALIDATED || report.status === REPORT_STATUS.VALIDATED_BY_CHIEF ? 'Validé' : 'Brouillon (Calculé automatiquement)'}
                         </div>
                         <div className="flex gap-2">
-                            {report.status !== 'validated' && (
+                            {report.status !== REPORT_STATUS.VALIDATED && report.status !== REPORT_STATUS.VALIDATED_BY_CHIEF && (
                                 <>
                                     <button onClick={handleSave} disabled={loading} className="px-4 py-2 bg-white border border-yellow-300 rounded hover:bg-yellow-100 flex items-center gap-2 text-sm font-medium">
                                         <Save size={16} /> Sauvegarder
                                     </button>
-                                    {(user.role === ROLES.CHEF_SERVICE || user.role === ROLES.Admin) && (
+                                    {(user.role === ROLES.CHEF_SERVICE || user.role === ROLES.ADMIN) && (
                                         <button onClick={handleValidate} disabled={loading} className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 text-sm font-medium">
                                             Valider
                                         </button>
@@ -190,7 +190,7 @@ const MonthlyReportPage = () => {
                                 <div>
                                     <h4 className="font-medium text-red-600 mb-2">Pannes Signalées</h4>
                                     <textarea
-                                        readOnly={report.status === 'validated'}
+                                        readOnly={report.status === REPORT_STATUS.VALIDATED || report.status === REPORT_STATUS.VALIDATED_BY_CHIEF}
                                         className="w-full h-32 p-2 text-sm border rounded bg-slate-50"
                                         value={report.data?.observations?.pannes || 'R.A.S.'}
                                         onChange={e => setReport(prev => ({ ...prev, data: { ...prev.data, observations: { ...prev.data.observations, pannes: e.target.value } } }))}
@@ -199,7 +199,7 @@ const MonthlyReportPage = () => {
                                 <div>
                                     <h4 className="font-medium text-blue-600 mb-2">Observations Générales</h4>
                                     <textarea
-                                        readOnly={report.status === 'validated'}
+                                        readOnly={report.status === REPORT_STATUS.VALIDATED || report.status === REPORT_STATUS.VALIDATED_BY_CHIEF}
                                         className="w-full h-32 p-2 text-sm border rounded bg-slate-50"
                                         value={report.data?.observations?.general || 'R.A.S.'}
                                         onChange={e => setReport(prev => ({ ...prev, data: { ...prev.data, observations: { ...prev.data.observations, general: e.target.value } } }))}

@@ -8,6 +8,7 @@ import { SERVICES, ROLES, REPORT_STATUS } from '../../utils/data-models';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { CheckCircle2, XCircle, Eye, Clock, FileText } from 'lucide-react';
+import ReportDetailModal from './components/ReportDetailModal';
 
 /**
  * ValidationPage - Module Direction et Chef de Service
@@ -124,16 +125,14 @@ const ValidationPage = () => {
 
     const getStatusBadge = (status) => {
         switch (status) {
-            case 'pending':
-            case 'transmis_chef':
+            case REPORT_STATUS.PENDING:
+            case REPORT_STATUS.TRANSMITTED_TO_CHIEF:
                 return <Badge variant="warning" icon={Clock}>En attente</Badge>;
-            case 'valide_chef':
+            case REPORT_STATUS.VALIDATED_BY_CHIEF:
                 return <Badge variant="info" icon={CheckCircle2}>Validé Chef</Badge>;
-            case 'valide':
-            case 'validated':
+            case REPORT_STATUS.VALIDATED:
                 return <Badge variant="success" icon={CheckCircle2}>Validé</Badge>;
-            case 'rejete':
-            case 'rejected':
+            case REPORT_STATUS.REJECTED:
                 return <Badge variant="danger" icon={XCircle}>Rejeté</Badge>;
             default:
                 return <Badge variant="default">{status}</Badge>;
@@ -186,7 +185,7 @@ const ValidationPage = () => {
                             <div>
                                 <p className="text-sm text-slate-500">Validés</p>
                                 <p className="text-2xl font-bold text-green-600">
-                                    {reports.filter(r => r.status === REPORT_STATUS.VALIDATED || r.status === 'validated').length}
+                                    {reports.filter(r => r.status === REPORT_STATUS.VALIDATED || r.status === REPORT_STATUS.VALIDATED_BY_CHIEF).length}
                                 </p>
                             </div>
                             <CheckCircle2 className="w-8 h-8 text-green-500" />
@@ -200,7 +199,7 @@ const ValidationPage = () => {
                             <div>
                                 <p className="text-sm text-slate-500">Rejetés</p>
                                 <p className="text-2xl font-bold text-red-600">
-                                    {reports.filter(r => r.status === REPORT_STATUS.REJECTED || r.status === 'rejected').length}
+                                    {reports.filter(r => r.status === REPORT_STATUS.REJECTED).length}
                                 </p>
                             </div>
                             <XCircle className="w-8 h-8 text-red-500" />
@@ -298,29 +297,17 @@ const ValidationPage = () => {
                 </CardContent>
             </Card>
 
-            {/* Modal détail */}
-            {
-                selectedReport && (
-                    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-                        <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[80vh] overflow-y-auto">
-                            <div className="p-6 border-b border-slate-200">
-                                <h2 className="text-2xl font-bold">{getServiceName(selectedReport.serviceId)}</h2>
-                                <p className="text-slate-500">Semaine {selectedReport.weekNumber} - {selectedReport.year}</p>
-                            </div>
-                            <div className="p-6">
-                                <pre className="text-sm bg-slate-50 p-4 rounded-lg overflow-auto">
-                                    {JSON.stringify(selectedReport.data, null, 2)}
-                                </pre>
-                            </div>
-                            <div className="p-6 border-t border-slate-200 flex justify-end gap-2">
-                                <Button variant="ghost" onClick={() => setSelectedReport(null)}>
-                                    Fermer
-                                </Button>
-                            </div>
-                        </div>
-                    </div>
-                )
-            }
+
+            {/* Modal détail - Version professionnelle */}
+            {selectedReport && (
+                <ReportDetailModal
+                    report={selectedReport}
+                    user={user}
+                    onClose={() => setSelectedReport(null)}
+                    onValidate={handleValidate}
+                    onReject={handleReject}
+                />
+            )}
         </div >
     );
 };

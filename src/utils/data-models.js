@@ -42,12 +42,10 @@ export const SERVICES = [
  * Statuts possibles pour un rapport hebdomadaire.
  */
 export const REPORT_STATUS = {
-    DRAFT: 'brouillon',       // En cours de saisie par la garde
-    PENDING: 'en_attente',    // Soumis au Chef de Service (Legacy: Direction) - On utilisera TRANSMITTED_TO_CHIEF pour être clair
-    TRANSMITTED_TO_CHIEF: 'transmis_chef', // Soumis au Chef
-    PENDING: 'en_attente',    // Soumis au Chef de Service
-    TRANSMITTED_TO_CHIEF: 'transmis_chef', // Soumis au Chef
-    VALIDATED_BY_CHIEF: 'valide_chef',     // Validé par Chef -> Visible Direction (Lecture Seule)
-    VALIDATED: 'valide_chef',      // Alias pour compatibilité
-    REJECTED: 'rejete',       // Rejeté par Chef (Retour au brouillon)
+    DRAFT: 'brouillon',                        // En cours de saisie par la garde
+    PENDING: 'en_attente',                     // Legacy - soumis (à migrer vers TRANSMITTED_TO_CHIEF)
+    TRANSMITTED_TO_CHIEF: 'transmis_chef',     // Soumis au Chef de Service pour validation
+    VALIDATED_BY_CHIEF: 'valide_chef',         // Validé par Chef → Visible Direction (Lecture Seule)
+    VALIDATED: 'valide_chef',                  // Alias pour compatibilité
+    REJECTED: 'rejete',                        // Rejeté par Chef (Retour au brouillon)
 };

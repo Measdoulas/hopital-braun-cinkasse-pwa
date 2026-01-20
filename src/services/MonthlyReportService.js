@@ -1,5 +1,6 @@
 
 import { SupabaseStorageService } from './SupabaseStorageService';
+import { REPORT_STATUS } from '../utils/data-models';
 import { startOfMonth, endOfMonth, format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 
@@ -20,7 +21,7 @@ export class MonthlyReportService {
         const existingReport = await this.storage.getMonthlyReport(serviceId, month, year);
 
         // Si le rapport existe et est validé, on le retourne tel quel
-        if (existingReport && existingReport.status === 'validated') {
+        if (existingReport && (existingReport.status === REPORT_STATUS.VALIDATED || existingReport.status === REPORT_STATUS.VALIDATED_BY_CHIEF)) {
             return existingReport;
         }
 
@@ -46,7 +47,7 @@ export class MonthlyReportService {
             serviceId,
             month,
             year,
-            status: 'draft',
+            status: REPORT_STATUS.DRAFT,
             data: aggregatedData
         };
     }
@@ -59,7 +60,7 @@ export class MonthlyReportService {
     async validateReport(report, userId) {
         const validatedReport = {
             ...report,
-            status: 'validated',
+            status: REPORT_STATUS.VALIDATED_BY_CHIEF,
             validatedAt: new Date().toISOString(),
             validatedBy: userId
         };
