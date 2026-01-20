@@ -119,6 +119,9 @@ export class DashboardService {
         };
     }
 
+    /* 
+    Updated to read bed capacity from LocalStorage configuration if available 
+    */
     _calculateCurrentHospitalizations(reports, serviceIds) {
         let currentTotal = 0;
         let capacityTotal = 0;
@@ -126,7 +129,24 @@ export class DashboardService {
         serviceIds.forEach(svcId => {
             const def = SERVICES.find(s => s.id === svcId);
             if (def && def.hasBeds) {
-                capacityTotal += (def.defaultBeds || 0);
+                // Tenter de récupérer la config personnalisée depuis le localStorage
+                // Note: C'est une opération synchrone sur le navigateur, donc acceptable ici
+                let serviceCapacity = def.defaultBeds || 0;
+
+                try {
+                    const savedConfigStr = localStorage.getItem(`service_config_${svcId}`);
+                    if (savedConfigStr) {
+                        const savedConfig = JSON.parse(savedConfigStr);
+                        // Si la config existe et définit bedCount (même 0), on l'utilise
+                        if (savedConfig.bedCount !== undefined) {
+                            serviceCapacity = savedConfig.bedCount;
+                        }
+                    }
+                } catch (e) {
+                    // Fallback silencieux
+                }
+
+                capacityTotal += serviceCapacity;
 
                 // Trouver le rapport le plus récent pour ce service
                 const svcReports = reports.filter(r => r.serviceId === svcId);
