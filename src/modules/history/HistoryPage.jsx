@@ -59,11 +59,22 @@ const HistoryPage = () => {
                     });
                 }
             });
-        } catch (e) {
-            console.error("Erreur chargement rapports hebdos:", e);
         }
 
-        // 2. Rapports Quotidiens
+        // 2. Rapports Mensuels (Nouveau)
+        try {
+            const monthlyKeyValues = await storage.list('rapports-mensuels');
+            monthlyKeyValues.forEach(kv => {
+                const report = kv.value;
+                if (report) {
+                    loadedReports.push(report);
+                }
+            });
+        } catch (e) {
+            console.error("Erreur chargement rapports mensuels:", e);
+        }
+
+        // 3. Rapports Quotidiens
         // Note: getAllKeys() n'est plus supporté avec Supabase.
         // Pour l'instant, l'historique global liste principalement les rapports d'activité validés (Hebdo).
         // L'affichage des rapports quotidiens bruts est désactivé temporairement dans l'historique global
@@ -121,6 +132,11 @@ const HistoryPage = () => {
     const getStatusBadge = (report) => {
         if (report._type === 'daily') {
             return <Badge variant="primary">Quotidien</Badge>;
+        }
+
+        // Pour rapports mensuels
+        if (report._type === 'monthly') {
+            return <Badge variant="secondary" className="bg-orange-100 text-orange-700">Mensuel</Badge>;
         }
 
         // Pour rapports hebdomadaires
@@ -209,6 +225,7 @@ const HistoryPage = () => {
                                 <option value="all">Tous les types</option>
                                 <option value="daily">Rapports quotidiens</option>
                                 <option value="weekly">Rapports hebdomadaires</option>
+                                <option value="monthly">Rapports mensuels</option>
                             </select>
                         </div>
                     </div>
@@ -216,7 +233,7 @@ const HistoryPage = () => {
             </Card>
 
             {/* Stats rapides */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <Card>
                     <CardContent className="p-4">
                         <p className="text-sm text-slate-500">Total des rapports</p>
@@ -233,9 +250,17 @@ const HistoryPage = () => {
                 </Card>
                 <Card>
                     <CardContent className="p-4">
-                        <p className="text-sm text-slate-500">Rapports hebdomadaires</p>
+                        <p className="text-sm text-slate-500">Rapports hebdos</p>
                         <p className="text-3xl font-bold text-green-600">
                             {reports.filter(r => r._type === 'weekly').length}
+                        </p>
+                    </CardContent>
+                </Card>
+                <Card>
+                    <CardContent className="p-4">
+                        <p className="text-sm text-slate-500">Rapports mensuels</p>
+                        <p className="text-3xl font-bold text-orange-600">
+                            {reports.filter(r => r._type === 'monthly').length}
                         </p>
                     </CardContent>
                 </Card>

@@ -279,6 +279,37 @@ export class SupabaseStorageService {
     }
 
     /**
+     * Récupère tous les rapports mensuels (pour l'historique)
+     */
+    async getMonthlyReports() {
+        try {
+            const { data, error } = await supabase
+                .from('monthly_reports')
+                .select('*')
+                .order('year', { ascending: false })
+                .order('month', { ascending: false });
+
+            if (error) throw error;
+
+            return data.map(row => ({
+                serviceId: row.service_id,
+                month: row.month,
+                year: row.year,
+                status: row.status,
+                data: row.data,
+                validatedAt: row.validated_at,
+                // Clé virtuelle pour le tri/affichage dans l'historique
+                _key: `rapports-mensuels:${row.service_id}:${row.year}-${row.month}`,
+                _type: 'monthly',
+                displayDate: `${new Date(Date.UTC(row.year, row.month - 1, 1)).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })}`
+            }));
+        } catch (error) {
+            console.error('Error fetching all monthly reports:', error);
+            return [];
+        }
+    }
+
+    /**
      * Sauvegarde un rapport mensuel
      * @param {object} report
      */

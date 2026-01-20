@@ -130,6 +130,11 @@ export class StorageService {
             return reports.map(r => ({ key: r._key, value: r }));
         }
 
+        if (prefix.startsWith('rapports-mensuels')) {
+            const reports = await this.supabaseService.getMonthlyReports();
+            return reports.map(r => ({ key: r._key, value: r }));
+        }
+
         return [];
     }
 
