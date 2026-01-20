@@ -5,8 +5,8 @@ import {
     X, Edit3, Save, Users, TrendingUp, Activity,
     FileText, AlertCircle, CheckCircle, Calendar
 } from 'lucide-react';
-import { Button } from '../../components/ui/Button';
-import { SERVICES, ROLES } from '../../utils/data-models';
+import { Button } from '../../../components/ui/Button';
+import { SERVICES, ROLES } from '../../../utils/data-models';
 
 /**
  * ReportDetailModal - Modal professionnel pour affichage/édition de rapports hebdomadaires
