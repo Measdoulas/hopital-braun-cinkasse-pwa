@@ -5,10 +5,10 @@ import {
     X, Edit3, Save, Users, TrendingUp, Activity,
     FileText, AlertCircle, Calendar, CheckCircle
 } from 'lucide-react';
-import { Button } from '../../components/ui/Button';
-import { Badge } from '../../components/ui/Badge';
-import { SERVICES, ROLES } from '../../utils/data-models';
-import { StorageService } from '../../services/storage';
+import { Button } from '../../../components/ui/Button';
+import { Badge } from '../../../components/ui/Badge';
+import { SERVICES, ROLES } from '../../../utils/data-models';
+import { StorageService } from '../../../services/storage';
 
 /**
  * HistoryReportModal - Modal universel pour visualiser et éditer tous types de rapports
@@ -26,10 +26,13 @@ const HistoryReportModal = ({ report, user, onClose, onSave }) => {
 
     // Permissions d'édition
     const canEdit = () => {
+        console.log('Checking canEdit:', { reportType, userRole: user.role, reportStatus: report.status });
+
         if (reportType === 'daily') {
             // Service peut modifier ses propres rapports quotidiens
             // Chef peut modifier les rapports quotidiens de son service
-            return user.role === ROLES.SERVICE || user.role === ROLES.CHEF_SERVICE;
+            // Pour l'instant, on autorise tous les rôles sauf DIRECTION
+            return user.role !== ROLES.DIRECTION;
         }
         if (reportType === 'weekly') {
             // Chef peut modifier ses rapports hebdo non validés uniquement
@@ -76,8 +79,8 @@ const HistoryReportModal = ({ report, user, onClose, onSave }) => {
             <div className="bg-white rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden shadow-2xl animate-in slide-in-from-bottom-4 duration-300">
                 {/* Header */}
                 <div className={`p-6 text-white ${reportType === 'daily' ? 'bg-gradient-to-r from-purple-600 to-purple-700' :
-                        reportType === 'weekly' ? 'bg-gradient-to-r from-blue-600 to-blue-700' :
-                            'bg-gradient-to-r from-orange-600 to-orange-700'
+                    reportType === 'weekly' ? 'bg-gradient-to-r from-blue-600 to-blue-700' :
+                        'bg-gradient-to-r from-orange-600 to-orange-700'
                     }`}>
                     <div className="flex items-start justify-between">
                         <div className="flex-1">
