@@ -68,27 +68,46 @@ export class SupabaseStorageService {
             const payload = {
                 service_id: serviceId,
                 date: date,
-                date_fin: dateFin || date, // Si pas de fin, fin = début (rétrocompat)
-                data: reportData // <--- FIXED: Column name is 'data'
+                date_fin: dateFin || date,
+                data: reportData
             };
 
-            const { data, error } = await supabase
+            // Tentative de mise à jour d'abord, puis insertion si n'existe pas
+            const { data: existingData, error: fetchError } = await supabase
                 .from('daily_reports')
-                .upsert(payload, {
-                    onConflict: 'service_id,date,date_fin'
-                })
-                .select()
-                .single();
+                .select('id')
+                .eq('service_id', serviceId)
+                .eq('date', date)
+                .eq('date_fin', dateFin || date)
+                .maybeSingle();
 
-            if (error) {
-                console.error('Supabase save error:', error);
-                throw new Error(`Erreur Supabase: ${error.message || JSON.stringify(error)}`);
+            let result;
+            if (existingData) {
+                // Update
+                result = await supabase
+                    .from('daily_reports')
+                    .update(payload)
+                    .eq('id', existingData.id)
+                    .select()
+                    .single();
+            } else {
+                // Insert
+                result = await supabase
+                    .from('daily_reports')
+                    .insert(payload)
+                    .select()
+                    .single();
+            }
+
+            if (result.error) {
+                console.error('Supabase save error:', result.error);
+                throw new Error(`Erreur Supabase: ${result.error.message || JSON.stringify(result.error)}`);
             }
 
             return true;
         } catch (error) {
             console.error('Error saving daily report:', error);
-            throw error; // Re-throw the error instead of returning false
+            throw error;
         }
     }
 
