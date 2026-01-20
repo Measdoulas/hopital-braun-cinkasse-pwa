@@ -72,7 +72,10 @@ const HistoryReportModal = ({ report, user, onClose, onSave }) => {
         }
     };
 
-    const displayData = isEditing ? editedData : report.data;
+    // Logique de résolution source des données
+    // Si isEditing, on utilise editedData
+    // Sinon, on cherche dans report (car on a aplati dans HistoryPage) OU dans report.data pour compatibilité
+    const displayData = isEditing ? editedData : (report.mouvements ? report : report.data);
 
     return (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">

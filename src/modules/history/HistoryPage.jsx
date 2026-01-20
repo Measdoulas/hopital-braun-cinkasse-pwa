@@ -82,9 +82,18 @@ const HistoryPage = () => {
         try {
             const dailyReports = await storage.getRecentDailyReports(canViewAll ? 'all' : user.serviceId || user.username);
             dailyReports.forEach(report => {
+                // CORRECTION CRITIQUE: Aplatir 'data' pour que displayData trouve 'mouvements' directement
+                // ou s'assurer que HistoryReportModal sait chercher dans report.data
+                // Pour l'instant, on garde la structure cohérente avec ce qui est attendu.
+
+                // Si report.data contient les sections, on les remonte ou on les laisse
+                // Le modal cherche report.data pour l'edition, et report (root) pour l'affichage ?
+                // Vérifions la structure dans le log
+
                 loadedReports.push({
                     ...report,
-                    _key: `rapports-journaliers:${report.serviceId}:${report.date}`, // Reconstitution clé pour compat
+                    ...report.data, // APLATISSAGE: remonte mouvements, consultations, etc à la racine
+                    _key: `rapports-journaliers:${report.serviceId}:${report.date}`,
                     _type: 'daily',
                     displayDate: format(parseISO(report.date), 'dd MMMM yyyy', { locale: fr })
                 });
@@ -100,6 +109,7 @@ const HistoryPage = () => {
             return new Date(dateB) - new Date(dateA);
         });
 
+        console.log("Rapports chargés (Total):", loadedReports);
         setReports(loadedReports);
         setLoading(false);
     };
