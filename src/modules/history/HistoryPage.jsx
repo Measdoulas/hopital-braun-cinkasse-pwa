@@ -59,6 +59,8 @@ const HistoryPage = () => {
                     });
                 }
             });
+        } catch (e) {
+            console.error("Erreur chargement rapports hebdos:", e);
         }
 
         // 2. Rapports Mensuels (Nouveau)
