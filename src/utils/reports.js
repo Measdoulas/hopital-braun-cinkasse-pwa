@@ -55,24 +55,30 @@ export const compileWeeklyReport = async (serviceId, dateInWeek) => {
     // Structure de base du rapport compilé
     const compiledData = {};
 
+    // Liste des champs métadonnées à ignorer (ne pas agréger)
+    const metadataFields = ['serviceId', 'date', 'dateFin', 'createdAt', 'updatedAt', '_key', '_type'];
+
     // Algorithme de sommation récursif pour les objets imbriqués
-    const aggregate = (target, source) => {
+    const aggregate = (target, source, parentKey = '') => {
         for (const key in source) {
-            if (typeof source[key] === 'object' && source[key] !== null) {
+            // Ignorer les champs métadonnées au niveau racine
+            if (parentKey === '' && metadataFields.includes(key)) {
+                continue;
+            }
+
+            if (typeof source[key] === 'object' && source[key] !== null && !Array.isArray(source[key])) {
                 if (!target[key]) target[key] = {};
-                aggregate(target[key], source[key]);
+                aggregate(target[key], source[key], key);
             } else if (typeof source[key] === 'number') {
                 target[key] = (target[key] || 0) + source[key];
-            } else if (typeof source[key] === 'string') {
-                // Pour les chaînes (ex: observations), on concatène si unique
+            } else if (typeof source[key] === 'string' && key.toLowerCase().includes('observation')) {
+                // Pour les observations uniquement, on concatène
                 if (source[key].trim()) {
                     const existing = target[key] ? target[key] + '\n' : '';
-                    // Évite les doublons exacts pour cleaner le rapport
-                    if (!target[key] || !target[key].includes(source[key])) {
-                        target[key] = existing + `[${source.date || 'J'}]: ${source[key]}`;
-                    }
+                    target[key] = existing + source[key];
                 }
             }
+            // Ignorer les autres strings (comme les IDs, dates, etc.)
         }
     };
 
