@@ -72,36 +72,17 @@ export class SupabaseStorageService {
                 data: reportData
             };
 
-            // Tentative de mise à jour d'abord, puis insertion si n'existe pas
-            const { data: existingData, error: fetchError } = await supabase
+            const { data, error } = await supabase
                 .from('daily_reports')
-                .select('id')
-                .eq('service_id', serviceId)
-                .eq('date', date)
-                .eq('date_fin', dateFin || date)
-                .maybeSingle();
+                .upsert(payload, {
+                    onConflict: 'service_id,date,date_fin'
+                })
+                .select()
+                .single();
 
-            let result;
-            if (existingData) {
-                // Update
-                result = await supabase
-                    .from('daily_reports')
-                    .update(payload)
-                    .eq('id', existingData.id)
-                    .select()
-                    .single();
-            } else {
-                // Insert
-                result = await supabase
-                    .from('daily_reports')
-                    .insert(payload)
-                    .select()
-                    .single();
-            }
-
-            if (result.error) {
-                console.error('Supabase save error:', result.error);
-                throw new Error(`Erreur Supabase: ${result.error.message || JSON.stringify(result.error)}`);
+            if (error) {
+                console.error('Supabase save error:', error);
+                throw new Error(`Erreur Supabase: ${error.message || JSON.stringify(error)}`);
             }
 
             return true;
