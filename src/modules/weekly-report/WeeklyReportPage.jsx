@@ -11,6 +11,28 @@ import { Alert } from '../../components/ui/Alert';
 import ServiceForm from '../daily-entry/forms/ServiceForm';
 import { Calendar, FileText, CheckCircle } from 'lucide-react';
 
+// Composant helper pour les stats éditables
+const EditableStatBox = ({ label, value, onChange, color }) => {
+    const colorClasses = {
+        green: 'text-green-700 focus:border-green-500',
+        orange: 'text-orange-700 focus:border-orange-500',
+        red: 'text-red-700 focus:border-red-500',
+        blue: 'text-blue-700 focus:border-blue-500',
+    };
+
+    return (
+        <div className="flex flex-col gap-1">
+            <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">{label}</span>
+            <input
+                type="number"
+                className={`text-2xl font-bold bg-white border border-slate-200 rounded-lg p-2 w-full outline-none focus:ring-2 focus:ring-offset-1 ${colorClasses[color] || 'text-slate-900'}`}
+                value={value || 0}
+                onChange={(e) => onChange(e.target.value)}
+            />
+        </div>
+    );
+};
+
 const WeeklyReportPage = () => {
     const { user } = useAuth();
     const [selectedDate, setSelectedDate] = useState(format(new Date(), 'yyyy-MM-dd'));
@@ -301,29 +323,6 @@ const WeeklyReportPage = () => {
                 </Card>
             )}
         </div>
-    );
-};
-
-// Petit composant helper pour les stats éditables
-const EditableStatBox = ({ label, value, onChange, color }) => {
-    const colorClasses = {
-        green: 'text-green-700 focus:border-green-500',
-        orange: 'text-orange-700 focus:border-orange-500',
-        red: 'text-red-700 focus:border-red-500',
-        blue: 'text-blue-700 focus:border-blue-500',
-    };
-
-    return (
-        <div className="flex flex-col gap-1">
-            <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">{label}</span>
-            <input
-                type="number"
-                className={`text-2xl font-bold bg-white border border-slate-200 rounded-lg p-2 w-full outline-none focus:ring-2 focus:ring-offset-1 ${colorClasses[color] || 'text-slate-900'}`}
-                value={value || 0}
-                onChange={(e) => onChange(e.target.value)}
-            />
-        </div>
-    );
 };
 
 export default WeeklyReportPage;
