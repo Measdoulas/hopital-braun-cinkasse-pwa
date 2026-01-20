@@ -323,6 +323,7 @@ const WeeklyReportPage = () => {
                 </Card>
             )}
         </div>
+    );
 };
 
 export default WeeklyReportPage;
