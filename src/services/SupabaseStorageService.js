@@ -82,13 +82,13 @@ export class SupabaseStorageService {
 
             if (error) {
                 console.error('Supabase save error:', error);
-                throw error;
+                throw new Error(`Erreur Supabase: ${error.message || JSON.stringify(error)}`);
             }
 
             return true;
         } catch (error) {
             console.error('Error saving daily report:', error);
-            return false;
+            throw error; // Re-throw the error instead of returning false
         }
     }
 
