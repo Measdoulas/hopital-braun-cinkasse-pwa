@@ -19,7 +19,8 @@ export const DEFAULT_SERVICE_CONFIG = {
     enableObservations: true,   // Observations générales
     customOptions: [],          // Champs personnalisés [{ id, label, type }]
     labelOverrides: {},         // Surcharges de libellés { 'fieldKey': 'Nouveau Label' }
-    hiddenFields: []            // Liste des IDs de champs masqués ['movements.deces', 'acts.consultation']
+    hiddenFields: [],           // Liste des IDs de champs masqués ['movements.deces', 'acts.consultation']
+    bedCount: 0                 // Capacité en lits pour calcul du taux d'occupation
 };
 
 /**

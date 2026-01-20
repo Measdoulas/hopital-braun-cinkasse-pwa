@@ -72,6 +72,24 @@ const PatientMovementSection = ({ data, onChange, readOnly = false, hideObservat
                     {!f_fin.isHidden && <NumberField label={f_fin.label} value={data?.effectifFin} onChange={(v) => updateField('effectifFin', v)} readOnly={readOnly} />}
                 </div>
 
+                {/* Taux d'Occupation */}
+                {config.bedCount > 0 && data?.effectifFin !== undefined && (
+                    <div className="flex items-center justify-end">
+                        <div className={`px-4 py-2 rounded-lg border ${(data.effectifFin / config.bedCount) > 1 ? 'bg-red-50 border-red-200 text-red-700' :
+                                (data.effectifFin / config.bedCount) > 0.8 ? 'bg-orange-50 border-orange-200 text-orange-700' :
+                                    'bg-blue-50 border-blue-200 text-blue-700'
+                            }`}>
+                            <span className="text-sm font-medium mr-2">Taux d'Occupation :</span>
+                            <span className="text-lg font-bold">
+                                {((data.effectifFin / config.bedCount) * 100).toFixed(1)}%
+                            </span>
+                            <span className="text-xs ml-2 opacity-75">
+                                ({data.effectifFin} / {config.bedCount} lits)
+                            </span>
+                        </div>
+                    </div>
+                )}
+
                 {/* Validation de cohérence */}
                 {!readOnly && data?.effectifFin !== undefined && data?.effectifFin !== theoreticalFin && (
                     <div className="text-xs text-amber-600 bg-amber-50 p-2 rounded border border-amber-200">

@@ -120,6 +120,26 @@ const ServiceConfigSection = ({ serviceId, serviceName }) => {
                     </div>
                 </div>
 
+                {/* 1.5 Capacité en Lits */}
+                <div className="space-y-4">
+                    <h3 className="font-semibold text-neutral-900 border-b pb-2">Capacité d'Accueil</h3>
+                    <div className="flex items-center justify-between bg-white p-4 rounded-lg border border-neutral-200">
+                        <div>
+                            <label className="block text-sm font-medium text-neutral-900">Nombre de Lits Disponibles</label>
+                            <p className="text-xs text-neutral-500">Utilisé pour calculer le Taux d'Occupation automatiquement.</p>
+                        </div>
+                        <div className="w-32">
+                            <Input
+                                type="number"
+                                min="0"
+                                value={config.bedCount || ''}
+                                onChange={(e) => setConfig({ ...config, bedCount: parseInt(e.target.value) || 0 })}
+                                className="text-right font-medium"
+                            />
+                        </div>
+                    </div>
+                </div>
+
                 {/* 2. Champs Standards */}
                 <div className="space-y-4">
                     <div
