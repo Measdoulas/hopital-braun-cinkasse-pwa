@@ -83,20 +83,11 @@ export const compileWeeklyReport = async (serviceId, dateInWeek) => {
     };
 
     dailyReports.forEach(report => {
-        // Le format retourné par storage.get (Supabase) est directement le data ou l'objet complet?
-        // Storage.js retourne: this.supabaseService.getDailyReport(...) qui retourne data?.data
-        // Donc 'report' EST l'objet data.
-
-        if (report) { // report est déjà le contenu data
-            // Hack pour inclure la date dans l'agrégation de texte. 
-            // On n'a pas la date dans 'data' forcément, mais on l'a dans l'itération si on change la map.
-            // Mais ici 'report' est le value.
-            // On peut pas facilement récupérer la date sauf si elle est dans data.
-            // Supabase stocke { data: {...} }. 
-            // On va assumer que le formulaire sauvegarde la date DANS data aussi ou on perd le contexte date.
-
-            // On va agréger tel quel.
-            aggregate(compiledData, report);
+        if (report) {
+            // Si le rapport a un champ 'data', on agrège son contenu
+            // Sinon on agrège le rapport lui-même (pour compatibilité)
+            const dataToAggregate = report.data || report;
+            aggregate(compiledData, dataToAggregate);
         }
     });
 
