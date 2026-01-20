@@ -15,8 +15,16 @@ import { StorageService } from '../../../services/storage';
  * Supporte: Rapports Quotidiens, Hebdomadaires, Mensuels
  */
 const HistoryReportModal = ({ report, user, onClose, onSave }) => {
+    // Initialiser editedData avec les données, qu'elles soient aplaties ou dans report.data
+    const initialData = report?.data || {
+        mouvements: report?.mouvements,
+        consultations: report?.consultations,
+        actes: report?.actes,
+        observations: report?.observations
+    };
+
     const [isEditing, setIsEditing] = useState(false);
-    const [editedData, setEditedData] = useState(report?.data || {});
+    const [editedData, setEditedData] = useState(initialData);
     const [saving, setSaving] = useState(false);
 
     if (!report) return null;
@@ -48,9 +56,13 @@ const HistoryReportModal = ({ report, user, onClose, onSave }) => {
             const storage = StorageService.getInstance();
 
             if (reportType === 'daily') {
-                // Sauvegarder rapport quotidien
-                await storage.set(report._key, {
-                    ...report,
+                // Pour les rapports quotidiens, on reconstruit la clé et on sauvegarde
+                // Note: storage.set pour "rapports-journaliers:..." attend un objet avec { data: {...} }
+                const keyParts = report._key.split(':');
+                const serviceId = keyParts[1];
+                const date = keyParts[2];
+
+                await storage.set(`rapports-journaliers:${serviceId}:${date}`, {
                     data: editedData,
                     updatedAt: new Date().toISOString()
                 });
@@ -66,6 +78,7 @@ const HistoryReportModal = ({ report, user, onClose, onSave }) => {
             setIsEditing(false);
             onSave && onSave();
         } catch (error) {
+            console.error('Erreur sauvegarde:', error);
             alert('Erreur lors de la sauvegarde: ' + error.message);
         } finally {
             setSaving(false);
@@ -322,7 +335,7 @@ const HistoryReportModal = ({ report, user, onClose, onSave }) => {
                                     variant="ghost"
                                     onClick={() => {
                                         setIsEditing(false);
-                                        setEditedData(report.data);
+                                        setEditedData(initialData);
                                     }}
                                 >
                                     Annuler
