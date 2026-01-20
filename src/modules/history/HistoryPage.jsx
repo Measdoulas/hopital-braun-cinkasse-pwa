@@ -78,18 +78,20 @@ const HistoryPage = () => {
             console.error("Erreur chargement rapports mensuels:", e);
         }
 
-        // 3. Rapports Quotidiens
-        // Note: getAllKeys() n'est plus supporté avec Supabase.
-        // Pour l'instant, l'historique global liste principalement les rapports d'activité validés (Hebdo).
-        // L'affichage des rapports quotidiens bruts est désactivé temporairement dans l'historique global
-        // pour des raisons de performance. Ils restent accessibles via la création/hebdo.
-        // TODO: Ajouter une pagination serveur pour les rapports quotidiens si nécessaire.
-
-        /* 
-        // ANCIEN CODE REPORT QUOTIDIEN (Incompatible Supabase getAllKeys)
-        const dailyKeys = allKeys.filter(key => key.startsWith('rapports-quotidiens:'));
-        dailyKeys.forEach(key => { ... });
-        */
+        // 3. Rapports Quotidiens (30 derniers jours)
+        try {
+            const dailyReports = await storage.getRecentDailyReports(canViewAll ? 'all' : user.serviceId || user.username);
+            dailyReports.forEach(report => {
+                loadedReports.push({
+                    ...report,
+                    _key: `rapports-journaliers:${report.serviceId}:${report.date}`, // Reconstitution clé pour compat
+                    _type: 'daily',
+                    displayDate: format(parseISO(report.date), 'dd MMMM yyyy', { locale: fr })
+                });
+            });
+        } catch (e) {
+            console.error("Erreur chargement rapports quotidiens:", e);
+        }
 
         // Trier par date (plus récent d'abord)
         loadedReports.sort((a, b) => {

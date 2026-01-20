@@ -145,6 +145,15 @@ export class StorageService {
         console.error("getAllKeys ne peut plus être utilisé de manière synchrone ni efficace avec Supabase.");
         return [];
     }
+    /**
+     * Récupère les rapports quotidiens récents (30 derniers jours par défaut)
+     */
+    async getRecentDailyReports(serviceId = null, days = 30) {
+        const endDate = new Date().toISOString().split('T')[0];
+        const startDate = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+
+        return await this.supabaseService.getDailyReportsInRange(startDate, endDate, serviceId === 'all' ? null : serviceId);
+    }
 }
 
 export const storage = new StorageService();
