@@ -117,46 +117,135 @@ const HistoryReportModal = ({ report, user, onClose, onSave }) => {
                     {displayData?.mouvements && (
                         <Section icon={Users} title="Mouvements de Patients" color="blue">
                             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                                <StatCard label="Entrées" value={displayData.mouvements?.entrees || 0} color="green" />
-                                <StatCard label="Sorties" value={displayData.mouvements?.sorties?.total || 0} color="orange" />
-                                <StatCard label="Décès" value={displayData.mouvements?.sorties?.deces || 0} color="red" />
-                                <StatCard label="Transferts" value={displayData.mouvements?.sorties?.transferts || 0} color="blue" />
+                                <EditableStatCard
+                                    label="Entrées"
+                                    value={displayData.mouvements?.entrees || 0}
+                                    isEditing={isEditing}
+                                    onChange={(val) => setEditedData(prev => ({
+                                        ...prev,
+                                        mouvements: { ...prev.mouvements, entrees: parseInt(val) || 0 }
+                                    }))}
+                                    color="green"
+                                />
+                                <EditableStatCard
+                                    label="Sorties"
+                                    value={displayData.mouvements?.sorties?.total || 0}
+                                    isEditing={isEditing}
+                                    onChange={(val) => setEditedData(prev => ({
+                                        ...prev,
+                                        mouvements: { ...prev.mouvements, sorties: { ...prev.mouvements.sorties, total: parseInt(val) || 0 } }
+                                    }))}
+                                    color="orange"
+                                />
+                                <EditableStatCard
+                                    label="Décès"
+                                    value={displayData.mouvements?.sorties?.deces || 0}
+                                    isEditing={isEditing}
+                                    onChange={(val) => setEditedData(prev => ({
+                                        ...prev,
+                                        mouvements: { ...prev.mouvements, sorties: { ...prev.mouvements.sorties, deces: parseInt(val) || 0 } }
+                                    }))}
+                                    color="red"
+                                />
+                                <EditableStatCard
+                                    label="Transferts"
+                                    value={displayData.mouvements?.sorties?.transferts || 0}
+                                    isEditing={isEditing}
+                                    onChange={(val) => setEditedData(prev => ({
+                                        ...prev,
+                                        mouvements: { ...prev.mouvements, sorties: { ...prev.mouvements.sorties, transferts: parseInt(val) || 0 } }
+                                    }))}
+                                    color="blue"
+                                />
                             </div>
-                            {displayData.mouvements?.effectifFin !== undefined && (
-                                <div className="mt-4 p-4 bg-blue-50 rounded-lg">
-                                    <span className="text-sm text-blue-700 font-medium">Effectif fin de période: </span>
-                                    <span className="text-2xl font-bold text-blue-900">{displayData.mouvements.effectifFin}</span>
-                                </div>
-                            )}
+                            <div className="mt-4 p-4 bg-blue-50 rounded-lg flex justify-between items-center">
+                                <span className="text-sm text-blue-700 font-medium">Effectif fin de période: </span>
+                                {isEditing ? (
+                                    <input
+                                        type="number"
+                                        className="w-24 p-1 border rounded text-right font-bold text-blue-900"
+                                        value={displayData.mouvements.effectifFin}
+                                        onChange={(e) => setEditedData(prev => ({
+                                            ...prev,
+                                            mouvements: { ...prev.mouvements, effectifFin: parseInt(e.target.value) || 0 }
+                                        }))}
+                                    />
+                                ) : (
+                                    <span className="text-2xl font-bold text-blue-900">{displayData.mouvements?.effectifFin || 0}</span>
+                                )}
+                            </div>
                         </Section>
                     )}
 
                     {/* Consultations */}
                     {displayData?.consultations && (
                         <Section icon={Activity} title="Consultations" color="purple">
-                            <div className="text-5xl font-bold text-purple-600">
-                                {displayData.consultations?.total || 0}
+                            <div className="flex items-center gap-4">
+                                {isEditing ? (
+                                    <div className="w-full">
+                                        <label className="block text-sm text-slate-500 mb-1">Consultations totales</label>
+                                        <input
+                                            type="number"
+                                            className="w-full p-2 text-3xl font-bold text-purple-600 border rounded-lg"
+                                            value={displayData.consultations?.total || 0}
+                                            onChange={(e) => setEditedData(prev => ({
+                                                ...prev,
+                                                consultations: { ...prev.consultations, total: parseInt(e.target.value) || 0 }
+                                            }))}
+                                        />
+                                    </div>
+                                ) : (
+                                    <div>
+                                        <div className="text-5xl font-bold text-purple-600">
+                                            {displayData.consultations?.total || 0}
+                                        </div>
+                                        <p className="text-sm text-slate-500 mt-2">Consultations totales</p>
+                                    </div>
+                                )}
                             </div>
-                            <p className="text-sm text-slate-500 mt-2">Consultations totales</p>
                         </Section>
                     )}
 
                     {/* Actes Médicaux */}
-                    {displayData?.actes && Object.keys(displayData.actes).length > 0 && (
+                    {(displayData?.actes || isEditing) && (
                         <Section icon={TrendingUp} title="Actes Médicaux" color="green">
-                            <div className="space-y-2">
-                                {Object.entries(displayData.actes)
-                                    .filter(([_, count]) => count > 0)
-                                    .sort(([, a], [, b]) => b - a)
-                                    .slice(0, 10)
-                                    .map(([actId, count]) => (
+                            <div className="space-y-2 max-h-[300px] overflow-y-auto pr-2">
+                                {/* En mode édition, on affiche tous les actes disponibles ou ceux déjà présents */}
+                                {isEditing ? (
+                                    Object.entries(displayData.actes || {}).map(([actId, count]) => (
                                         <div key={actId} className="flex justify-between items-center py-2 border-b border-slate-100 last:border-0">
-                                            <span className="text-slate-700">{actId}</span>
-                                            <span className="font-bold text-green-600 bg-green-50 px-3 py-1 rounded-full">
-                                                {count}
-                                            </span>
+                                            <span className="text-slate-700 font-medium">{actId}</span>
+                                            <input
+                                                type="number"
+                                                className="w-20 p-1 border rounded text-center"
+                                                value={count}
+                                                onChange={(e) => setEditedData(prev => ({
+                                                    ...prev,
+                                                    actes: { ...prev.actes, [actId]: parseInt(e.target.value) || 0 }
+                                                }))}
+                                            />
                                         </div>
-                                    ))}
+                                    ))
+                                ) : (
+                                    /* En lecture seule, on filtre ceux > 0 */
+                                    (Object.entries(displayData.actes || {})
+                                        .filter(([_, count]) => count > 0)
+                                        .length > 0) ? (
+                                        Object.entries(displayData.actes)
+                                            .filter(([_, count]) => count > 0)
+                                            .sort(([, a], [, b]) => b - a)
+                                            .map(([actId, count]) => (
+                                                <div key={actId} className="flex justify-between items-center py-2 border-b border-slate-100 last:border-0">
+                                                    <span className="text-slate-700">{actId}</span>
+                                                    <span className="font-bold text-green-600 bg-green-50 px-3 py-1 rounded-full">
+                                                        {count}
+                                                    </span>
+                                                </div>
+                                            ))
+                                    ) : (
+                                        <p className="text-slate-500 italic text-sm">Aucun acte enregistré</p>
+                                    )
+                                )}
                             </div>
                         </Section>
                     )}
@@ -173,10 +262,10 @@ const HistoryReportModal = ({ report, user, onClose, onSave }) => {
                                         <textarea
                                             className="w-full h-24 p-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                                             value={editedData?.observations?.pannes || ''}
-                                            onChange={(e) => setEditedData({
-                                                ...editedData,
-                                                observations: { ...editedData.observations, pannes: e.target.value }
-                                            })}
+                                            onChange={(e) => setEditedData(prev => ({
+                                                ...prev,
+                                                observations: { ...prev.observations || {}, pannes: e.target.value }
+                                            }))}
                                         />
                                     ) : (
                                         <p className="p-3 bg-slate-50 rounded-lg text-slate-700 min-h-[60px] whitespace-pre-wrap">
@@ -192,10 +281,10 @@ const HistoryReportModal = ({ report, user, onClose, onSave }) => {
                                         <textarea
                                             className="w-full h-24 p-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                                             value={editedData?.observations?.general || ''}
-                                            onChange={(e) => setEditedData({
-                                                ...editedData,
-                                                observations: { ...editedData.observations, general: e.target.value }
-                                            })}
+                                            onChange={(e) => setEditedData(prev => ({
+                                                ...prev,
+                                                observations: { ...prev.observations || {}, general: e.target.value }
+                                            }))}
                                         />
                                     ) : (
                                         <p className="p-3 bg-slate-50 rounded-lg text-slate-700 min-h-[60px] whitespace-pre-wrap">
@@ -278,6 +367,33 @@ const Section = ({ icon: Icon, title, color, children }) => {
                 {title}
             </h3>
             {children}
+        </div>
+    );
+};
+
+const EditableStatCard = ({ label, value, color = 'blue', isEditing, onChange }) => {
+    const colorClasses = {
+        blue: 'text-blue-600 bg-blue-50',
+        green: 'text-green-600 bg-green-50',
+        orange: 'text-orange-600 bg-orange-50',
+        red: 'text-red-600 bg-red-50'
+    };
+
+    return (
+        <div className={`rounded-lg p-4 ${colorClasses[color]}`}>
+            {isEditing ? (
+                <input
+                    type="number"
+                    className="w-full p-1 text-xl font-bold border rounded bg-white/50"
+                    value={value}
+                    onChange={(e) => onChange && onChange(e.target.value)}
+                />
+            ) : (
+                <div className={`text-2xl font-bold ${colorClasses[color].split(' ')[0]}`}>
+                    {value}
+                </div>
+            )}
+            <div className="text-sm font-medium mt-1 opacity-80">{label}</div>
         </div>
     );
 };
