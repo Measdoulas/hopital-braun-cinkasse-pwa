@@ -126,47 +126,202 @@ const WeeklyReportPage = () => {
 
             {reportData && (
                 <Card className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-                    <CardHeader className="flex flex-row items-center justify-between">
+                    <CardHeader className="flex flex-row items-center justify-between bg-slate-50 border-b border-slate-100">
                         <div>
-                            <CardTitle>Prévisualisation du Rapport</CardTitle>
-                            <p className="text-sm text-neutral-500 mt-1">
-                                Période du {format(new Date(period.start), 'dd/MM/yyyy')} au {format(new Date(period.end), 'dd/MM/yyyy')}
-                            </p>
-                            <p className="text-xs text-blue-600 mt-1">
-                                Basé sur {reportData.dailyReportsCount} rapports quotidiens trouvés.
-                            </p>
+                            <CardTitle className="text-xl text-blue-900">Prévisualisation du Rapport Hebdomadaire</CardTitle>
+                            <div className="flex items-center gap-2 mt-2">
+                                <span className="text-sm font-medium px-2 py-1 bg-blue-100 text-blue-700 rounded-md">
+                                    Semaine du {format(new Date(period.start), 'dd/MM/yyyy')} au {format(new Date(period.end), 'dd/MM/yyyy')}
+                                </span>
+                                <span className="text-sm text-slate-500">
+                                    • {reportData.dailyReportsCount} rapports quotidiens inclus
+                                </span>
+                            </div>
                         </div>
                     </CardHeader>
-                    <CardContent>
-                        {error && <Alert variant="error" className="mb-4">{error}</Alert>}
 
-                        <div className="pointer-events-none opacity-90 bg-neutral-50/50 p-4 rounded-lg border border-neutral-100">
-                            <ServiceForm
-                                serviceId={serviceId}
-                                data={reportData.data}
-                                onChange={() => { }}
-                                readOnly={true}
-                            />
-                        </div>
+                    <CardContent className="p-0">
+                        {error && <div className="p-6 pb-0"><Alert variant="error">{error}</Alert></div>}
 
-                        {!isReadOnly && (
-                            <div className="flex justify-end pt-4">
-                                {!success ? (
-                                    <Button onClick={handleSubmit} variant="primary" isLoading={loading}>
-                                        <CheckCircle className="mr-2 h-4 w-4" />
-                                        Soumettre à la Direction
-                                    </Button>
-                                ) : (
-                                    <Button variant="secondary" disabled className="text-green-600 border-green-200 bg-green-50">
-                                        <CheckCircle className="mr-2 h-4 w-4" />
-                                        Soumis avec succès !
-                                    </Button>
-                                )}
+                        {/* Zone d'Edition / Visualisation */}
+                        <div className="p-6 space-y-8">
+
+                            {/* Mouvements */}
+                            {reportData.data?.mouvements && (
+                                <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
+                                    <div className="bg-blue-50 px-6 py-4 border-b border-blue-100 flex justify-between items-center">
+                                        <h3 className="font-bold text-blue-800 flex items-center gap-2">
+                                            🏥 Mouvements de Patients
+                                        </h3>
+                                    </div>
+                                    <div className="p-6 grid grid-cols-2 md:grid-cols-4 gap-6">
+                                        <EditableStatBox
+                                            label="Entrées"
+                                            value={reportData.data.mouvements.entrees}
+                                            onChange={(val) => setReportData(prev => ({
+                                                ...prev,
+                                                data: { ...prev.data, mouvements: { ...prev.data.mouvements, entrees: parseInt(val) || 0 } }
+                                            }))}
+                                            color="green"
+                                        />
+                                        <EditableStatBox
+                                            label="Sorties"
+                                            value={reportData.data.mouvements.sorties?.total}
+                                            onChange={(val) => setReportData(prev => ({
+                                                ...prev,
+                                                data: { ...prev.data, mouvements: { ...prev.data.mouvements, sorties: { ...prev.data.mouvements.sorties, total: parseInt(val) || 0 } } }
+                                            }))}
+                                            color="orange"
+                                        />
+                                        <EditableStatBox
+                                            label="Décès"
+                                            value={reportData.data.mouvements.sorties?.deces}
+                                            onChange={(val) => setReportData(prev => ({
+                                                ...prev,
+                                                data: { ...prev.data, mouvements: { ...prev.data.mouvements, sorties: { ...prev.data.mouvements.sorties, deces: parseInt(val) || 0 } } }
+                                            }))}
+                                            color="red"
+                                        />
+                                        <EditableStatBox
+                                            label="Transferts"
+                                            value={reportData.data.mouvements.sorties?.transferts}
+                                            onChange={(val) => setReportData(prev => ({
+                                                ...prev,
+                                                data: { ...prev.data, mouvements: { ...prev.data.mouvements, sorties: { ...prev.data.mouvements.sorties, transferts: parseInt(val) || 0 } } }
+                                            }))}
+                                            color="blue"
+                                        />
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Consultations */}
+                            {reportData.data?.consultations && (
+                                <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
+                                    <div className="bg-purple-50 px-6 py-4 border-b border-purple-100">
+                                        <h3 className="font-bold text-purple-800 flex items-center gap-2">
+                                            🩺 Consultations
+                                        </h3>
+                                    </div>
+                                    <div className="p-6">
+                                        <div className="flex items-center gap-4 mb-4">
+                                            <label className="text-sm font-medium text-slate-600">Total Consultations :</label>
+                                            <input
+                                                type="number"
+                                                className="text-3xl font-bold text-purple-700 bg-transparent border-b-2 border-purple-100 focus:border-purple-500 outline-none w-32"
+                                                value={reportData.data.consultations.total || 0}
+                                                onChange={(e) => setReportData(prev => ({
+                                                    ...prev,
+                                                    data: { ...prev.data, consultations: { ...prev.data.consultations, total: parseInt(e.target.value) || 0 } }
+                                                }))}
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Actes (Liste simplifiée éditable) */}
+                            {reportData.data?.actes && (
+                                <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
+                                    <div className="bg-green-50 px-6 py-4 border-b border-green-100">
+                                        <h3 className="font-bold text-green-800 flex items-center gap-2">
+                                            💉 Actes Médicaux
+                                        </h3>
+                                    </div>
+                                    <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        {Object.entries(reportData.data.actes).map(([actId, count]) => (
+                                            <div key={actId} className="flex justify-between items-center p-3 bg-slate-50 rounded-lg border border-slate-100">
+                                                <span className="font-medium text-slate-700">{actId}</span>
+                                                <input
+                                                    type="number"
+                                                    className="w-20 text-right font-bold text-green-700 bg-white border border-slate-200 rounded px-2 py-1 focus:ring-2 focus:ring-green-500 outline-none"
+                                                    value={count}
+                                                    onChange={(e) => setReportData(prev => ({
+                                                        ...prev,
+                                                        data: {
+                                                            ...prev.data,
+                                                            actes: { ...prev.data.actes, [actId]: parseInt(e.target.value) || 0 }
+                                                        }
+                                                    }))}
+                                                />
+                                            </div>
+                                        ))}
+                                        {Object.keys(reportData.data.actes || {}).length === 0 && (
+                                            <p className="text-slate-500 italic">Aucun acte enregistré pour cette période.</p>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Observations (Textareas éditables) */}
+                            <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
+                                <div className="bg-amber-50 px-6 py-4 border-b border-amber-100">
+                                    <h3 className="font-bold text-amber-800">📝 Observations & Synthèse</h3>
+                                </div>
+                                <div className="p-6 space-y-4">
+                                    <div>
+                                        <label className="block text-sm font-medium text-slate-700 mb-2">Synthèse de la semaine</label>
+                                        <textarea
+                                            className="w-full h-24 p-3 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                                            placeholder="Ajoutez une synthèse ou des observations générales..."
+                                            value={reportData.data.observations?.general || ''}
+                                            onChange={(e) => setReportData(prev => ({
+                                                ...prev,
+                                                data: {
+                                                    ...prev.data,
+                                                    observations: { ...prev.data.observations || {}, general: e.target.value }
+                                                }
+                                            }))}
+                                        />
+                                    </div>
+                                </div>
                             </div>
-                        )}
+
+                        </div>
                     </CardContent>
+
+                    <div className="p-6 bg-slate-50 border-t border-slate-100 flex justify-end gap-4 rounded-b-xl">
+                        {!isReadOnly && !success ? (
+                            <>
+                                <div className="text-xs text-slate-500 self-center mr-4 max-w-xs text-right">
+                                    Vérifiez les données ci-dessus. Vous pouvez modifier les chiffres directement avant l'envoi.
+                                </div>
+                                <Button onClick={handleSubmit} variant="primary" isLoading={loading} className="px-6">
+                                    <CheckCircle className="mr-2 h-4 w-4" />
+                                    Transmettre au Chef de Service
+                                </Button>
+                            </>
+                        ) : success && (
+                            <Button variant="secondary" disabled className="text-green-600 border-green-200 bg-green-50">
+                                <CheckCircle className="mr-2 h-4 w-4" />
+                                Rapport Transmis !
+                            </Button>
+                        )}
+                    </div>
                 </Card>
             )}
+        </div>
+    );
+};
+
+// Petit composant helper pour les stats éditables
+const EditableStatBox = ({ label, value, onChange, color }) => {
+    const colorClasses = {
+        green: 'text-green-700 focus:border-green-500',
+        orange: 'text-orange-700 focus:border-orange-500',
+        red: 'text-red-700 focus:border-red-500',
+        blue: 'text-blue-700 focus:border-blue-500',
+    };
+
+    return (
+        <div className="flex flex-col gap-1">
+            <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">{label}</span>
+            <input
+                type="number"
+                className={`text-2xl font-bold bg-white border border-slate-200 rounded-lg p-2 w-full outline-none focus:ring-2 focus:ring-offset-1 ${colorClasses[color] || 'text-slate-900'}`}
+                value={value || 0}
+                onChange={(e) => onChange(e.target.value)}
+            />
         </div>
     );
 };
