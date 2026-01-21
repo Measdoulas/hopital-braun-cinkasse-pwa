@@ -162,130 +162,173 @@ const WeeklyReportPage = () => {
                         </div>
                     </CardHeader>
 
-                    <CardContent className="p-0">
-                        {error && <div className="p-6 pb-0"><Alert variant="error">{error}</Alert></div>}
+                    <CardContent className="p-0 bg-neutral-100/50 min-h-screen flex justify-center py-8">
+                        {error && <div className="max-w-4xl mx-auto mb-4 w-full"><Alert variant="error">{error}</Alert></div>}
 
-                        {/* Zone d'Edition / Visualisation */}
-                        <div className="p-6 space-y-8">
+                        {/* Feuille A4 "Virtuelle" pour le rapport */}
+                        <div className="bg-white shadow-lg border border-neutral-200 max-w-[210mm] w-full mx-auto p-[15mm] text-neutral-900">
 
-                            {/* Mouvements */}
-                            {reportData.data?.mouvements && (
-                                <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
-                                    <div className="bg-blue-50 px-6 py-4 border-b border-blue-100 flex justify-between items-center">
-                                        <h3 className="font-bold text-blue-800 flex items-center gap-2">
-                                            🏥 Mouvements de Patients
-                                        </h3>
-                                    </div>
-                                    <div className="p-6 grid grid-cols-2 md:grid-cols-4 gap-6">
-                                        <EditableStatBox
-                                            label="Entrées"
-                                            value={reportData.data.mouvements.entrees}
-                                            onChange={(val) => setReportData(prev => ({
-                                                ...prev,
-                                                data: { ...prev.data, mouvements: { ...prev.data.mouvements, entrees: parseInt(val) || 0 } }
-                                            }))}
-                                            color="green"
-                                        />
-                                        <EditableStatBox
-                                            label="Sorties"
-                                            value={reportData.data.mouvements.sorties?.total}
-                                            onChange={(val) => setReportData(prev => ({
-                                                ...prev,
-                                                data: { ...prev.data, mouvements: { ...prev.data.mouvements, sorties: { ...prev.data.mouvements.sorties, total: parseInt(val) || 0 } } }
-                                            }))}
-                                            color="orange"
-                                        />
-                                        <EditableStatBox
-                                            label="Décès"
-                                            value={reportData.data.mouvements.sorties?.deces}
-                                            onChange={(val) => setReportData(prev => ({
-                                                ...prev,
-                                                data: { ...prev.data, mouvements: { ...prev.data.mouvements, sorties: { ...prev.data.mouvements.sorties, deces: parseInt(val) || 0 } } }
-                                            }))}
-                                            color="red"
-                                        />
-                                        <EditableStatBox
-                                            label="Transferts"
-                                            value={reportData.data.mouvements.sorties?.transferts}
-                                            onChange={(val) => setReportData(prev => ({
-                                                ...prev,
-                                                data: { ...prev.data, mouvements: { ...prev.data.mouvements, sorties: { ...prev.data.mouvements.sorties, transferts: parseInt(val) || 0 } } }
-                                            }))}
-                                            color="blue"
-                                        />
+                            {/* En-tête du Document */}
+                            <div className="border-b-2 border-neutral-800 pb-4 mb-8 flex justify-between items-start">
+                                <div>
+                                    <h1 className="text-2xl font-bold uppercase tracking-wide text-neutral-900">Rapport d'Activité Hebdomadaire</h1>
+                                    <div className="mt-2 text-sm text-neutral-600">
+                                        <p><span className="font-bold">Service :</span> {serviceId?.toUpperCase()}</p>
+                                        <p><span className="font-bold">Période :</span> du {format(new Date(period.start), 'dd/MM/yyyy')} au {format(new Date(period.end), 'dd/MM/yyyy')}</p>
                                     </div>
                                 </div>
-                            )}
-
-                            {/* Consultations */}
-                            {reportData.data?.consultations && (
-                                <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
-                                    <div className="bg-purple-50 px-6 py-4 border-b border-purple-100">
-                                        <h3 className="font-bold text-purple-800 flex items-center gap-2">
-                                            🩺 Consultations
-                                        </h3>
-                                    </div>
-                                    <div className="p-6">
-                                        <div className="flex items-center gap-4 mb-4">
-                                            <label className="text-sm font-medium text-slate-600">Total Consultations :</label>
-                                            <input
-                                                type="number"
-                                                className="text-3xl font-bold text-purple-700 bg-transparent border-b-2 border-purple-100 focus:border-purple-500 outline-none w-32"
-                                                value={reportData.data.consultations.total || 0}
-                                                onChange={(e) => setReportData(prev => ({
-                                                    ...prev,
-                                                    data: { ...prev.data, consultations: { ...prev.data.consultations, total: parseInt(e.target.value) || 0 } }
-                                                }))}
-                                            />
-                                        </div>
-                                    </div>
+                                <div className="text-right text-xs text-neutral-500">
+                                    <p>Généré le {format(new Date(), 'dd/MM/yyyy')}</p>
+                                    <p>Réf: HEB-{format(new Date(period.start), 'ww-yyyy')}</p>
                                 </div>
-                            )}
+                            </div>
 
-                            {/* Actes (Liste simplifiée éditable) */}
-                            {reportData.data?.actes && (
-                                <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
-                                    <div className="bg-green-50 px-6 py-4 border-b border-green-100">
-                                        <h3 className="font-bold text-green-800 flex items-center gap-2">
-                                            💉 Actes Médicaux
-                                        </h3>
-                                    </div>
-                                    <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        {Object.entries(reportData.data.actes).map(([actId, count]) => (
-                                            <div key={actId} className="flex justify-between items-center p-3 bg-slate-50 rounded-lg border border-slate-100">
-                                                <span className="font-medium text-slate-700">{actId}</span>
-                                                <input
-                                                    type="number"
-                                                    className="w-20 text-right font-bold text-green-700 bg-white border border-slate-200 rounded px-2 py-1 focus:ring-2 focus:ring-green-500 outline-none"
-                                                    value={count}
-                                                    onChange={(e) => setReportData(prev => ({
-                                                        ...prev,
-                                                        data: {
-                                                            ...prev.data,
-                                                            actes: { ...prev.data.actes, [actId]: parseInt(e.target.value) || 0 }
-                                                        }
-                                                    }))}
-                                                />
-                                            </div>
-                                        ))}
-                                        {Object.keys(reportData.data.actes || {}).length === 0 && (
-                                            <p className="text-slate-500 italic">Aucun acte enregistré pour cette période.</p>
-                                        )}
-                                    </div>
-                                </div>
-                            )}
+                            <div className="space-y-8">
 
-                            {/* Observations (Textareas éditables) */}
-                            <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
-                                <div className="bg-amber-50 px-6 py-4 border-b border-amber-100">
-                                    <h3 className="font-bold text-amber-800">📝 Observations & Synthèse</h3>
+                                {/* TABLEAU 1: MOUVEMENTS & EFFECTIFS */}
+                                <section>
+                                    <h2 className="text-sm font-bold uppercase border-b border-neutral-300 mb-2 pb-1 text-neutral-700">1. Mouvements des Malades</h2>
+                                    <table className="w-full border-collapse border border-neutral-300 text-sm">
+                                        <thead className="bg-neutral-50 text-neutral-700">
+                                            <tr>
+                                                <th className="border border-neutral-300 p-2 text-left w-1/2">Désignation</th>
+                                                <th className="border border-neutral-300 p-2 text-center w-1/4">Valeur</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {/* Entrées */}
+                                            <tr>
+                                                <td className="border border-neutral-300 p-2 font-medium">Entrées</td>
+                                                <td className="border border-neutral-300 p-0">
+                                                    <input
+                                                        type="number"
+                                                        className="w-full h-full p-2 text-center bg-transparent outline-none focus:bg-blue-50 font-bold"
+                                                        value={reportData.data.mouvements.entrees}
+                                                        onChange={(e) => setReportData(prev => ({
+                                                            ...prev,
+                                                            data: { ...prev.data, mouvements: { ...prev.data.mouvements, entrees: parseInt(e.target.value) || 0 } }
+                                                        }))}
+                                                    />
+                                                </td>
+                                            </tr>
+                                            {/* Sorties (Sous-titre) */}
+                                            <tr className="bg-neutral-50">
+                                                <td colSpan="2" className="border border-neutral-300 p-1 text-xs font-bold text-neutral-500 uppercase tracking-wider pl-2">Sorties</td>
+                                            </tr>
+                                            <tr>
+                                                <td className="border border-neutral-300 p-2 pl-6">Guéris / Améliorés (Sorties)</td>
+                                                <td className="border border-neutral-300 p-0">
+                                                    <input
+                                                        type="number"
+                                                        className="w-full h-full p-2 text-center bg-transparent outline-none focus:bg-blue-50"
+                                                        value={reportData.data.mouvements.sorties?.total}
+                                                        onChange={(e) => setReportData(prev => ({
+                                                            ...prev,
+                                                            data: { ...prev.data, mouvements: { ...prev.data.mouvements, sorties: { ...prev.data.mouvements.sorties, total: parseInt(e.target.value) || 0 } } }
+                                                        }))}
+                                                    />
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <td className="border border-neutral-300 p-2 pl-6">Décès</td>
+                                                <td className="border border-neutral-300 p-0">
+                                                    <input
+                                                        type="number"
+                                                        className="w-full h-full p-2 text-center bg-transparent outline-none focus:bg-blue-50 text-red-600 font-medium"
+                                                        value={reportData.data.mouvements.sorties?.deces}
+                                                        onChange={(e) => setReportData(prev => ({
+                                                            ...prev,
+                                                            data: { ...prev.data, mouvements: { ...prev.data.mouvements, sorties: { ...prev.data.mouvements.sorties, deces: parseInt(e.target.value) || 0 } } }
+                                                        }))}
+                                                    />
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <td className="border border-neutral-300 p-2 pl-6">Transferts / Évadés</td>
+                                                <td className="border border-neutral-300 p-0">
+                                                    <input
+                                                        type="number"
+                                                        className="w-full h-full p-2 text-center bg-transparent outline-none focus:bg-blue-50"
+                                                        value={reportData.data.mouvements.sorties?.transferts}
+                                                        onChange={(e) => setReportData(prev => ({
+                                                            ...prev,
+                                                            data: { ...prev.data, mouvements: { ...prev.data.mouvements, sorties: { ...prev.data.mouvements.sorties, transferts: parseInt(e.target.value) || 0 } } }
+                                                        }))}
+                                                    />
+                                                </td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </section>
+
+                                {/* TABLEAU 2: ACTIVITÉS & CONSULTATIONS */}
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                    <section>
+                                        <h2 className="text-sm font-bold uppercase border-b border-neutral-300 mb-2 pb-1 text-neutral-700">2. Consultations</h2>
+                                        <table className="w-full border-collapse border border-neutral-300 text-sm">
+                                            <tbody>
+                                                <tr>
+                                                    <td className="border border-neutral-300 p-2 font-medium bg-neutral-50 w-2/3">Total Consultations</td>
+                                                    <td className="border border-neutral-300 p-0">
+                                                        <input
+                                                            type="number"
+                                                            className="w-full h-full p-2 text-center bg-transparent outline-none focus:bg-blue-50 font-bold"
+                                                            value={reportData.data.consultations.total || 0}
+                                                            onChange={(e) => setReportData(prev => ({
+                                                                ...prev,
+                                                                data: { ...prev.data, consultations: { ...prev.data.consultations, total: parseInt(e.target.value) || 0 } }
+                                                            }))}
+                                                        />
+                                                    </td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </section>
+
+                                    <section>
+                                        <h2 className="text-sm font-bold uppercase border-b border-neutral-300 mb-2 pb-1 text-neutral-700">3. Actes Médicaux</h2>
+                                        <table className="w-full border-collapse border border-neutral-300 text-sm">
+                                            <thead className="bg-neutral-50 text-neutral-700">
+                                                <tr>
+                                                    <th className="border border-neutral-300 p-2 text-left">Acte</th>
+                                                    <th className="border border-neutral-300 p-2 text-center w-24">Nb</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {Object.entries(reportData.data.actes || {}).map(([actId, count]) => (
+                                                    <tr key={actId}>
+                                                        <td className="border border-neutral-300 p-2">{actId}</td>
+                                                        <td className="border border-neutral-300 p-0">
+                                                            <input
+                                                                type="number"
+                                                                className="w-full h-full p-2 text-center bg-transparent outline-none focus:bg-blue-50"
+                                                                value={count}
+                                                                onChange={(e) => setReportData(prev => ({
+                                                                    ...prev,
+                                                                    data: {
+                                                                        ...prev.data,
+                                                                        actes: { ...prev.data.actes, [actId]: parseInt(e.target.value) || 0 }
+                                                                    }
+                                                                }))}
+                                                            />
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                                {Object.keys(reportData.data.actes || {}).length === 0 && (
+                                                    <tr><td colSpan="2" className="border border-neutral-300 p-2 text-center italic text-neutral-500">Aucun acte</td></tr>
+                                                )}
+                                            </tbody>
+                                        </table>
+                                    </section>
                                 </div>
-                                <div className="p-6 space-y-4">
-                                    <div>
-                                        <label className="block text-sm font-medium text-slate-700 mb-2">Synthèse de la semaine</label>
+
+                                {/* SECTION 4: OBSERVATIONS */}
+                                <section>
+                                    <h2 className="text-sm font-bold uppercase border-b border-neutral-300 mb-2 pb-1 text-neutral-700">4. Observations & Synthèse</h2>
+                                    <div className="border border-neutral-300 rounded p-0">
                                         <textarea
-                                            className="w-full h-24 p-3 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-                                            placeholder="Ajoutez une synthèse ou des observations générales..."
+                                            className="w-full h-32 p-4 text-sm bg-transparent outline-none resize-y"
+                                            placeholder="Saisir les observations générales, problèmes rencontrés ou synthèse de la semaine..."
                                             value={reportData.data.observations?.general || ''}
                                             onChange={(e) => setReportData(prev => ({
                                                 ...prev,
@@ -296,30 +339,39 @@ const WeeklyReportPage = () => {
                                             }))}
                                         />
                                     </div>
+                                    <p className="text-xs text-neutral-400 mt-1 text-right">Ce champ s'agrandit automatiquement à la saisie</p>
+                                </section>
+
+                                <div className="pt-8 flex justify-end">
+                                    <div className="text-center w-48">
+                                        <p className="text-sm font-bold mb-8">Le Chef de Service</p>
+                                        <div className="border-t border-neutral-300 pt-1 text-xs text-neutral-500">(Signature)</div>
+                                    </div>
                                 </div>
+
                             </div>
-
                         </div>
-                    </CardContent>
 
-                    <div className="p-6 bg-slate-50 border-t border-slate-100 flex justify-end gap-4 rounded-b-xl">
-                        {!isReadOnly && !success ? (
-                            <>
-                                <div className="text-xs text-slate-500 self-center mr-4 max-w-xs text-right">
-                                    Vérifiez les données ci-dessus. Vous pouvez modifier les chiffres directement avant l'envoi.
-                                </div>
-                                <Button onClick={handleSubmit} variant="primary" isLoading={loading} className="px-6">
+                        {/* Actions Flottantes ou Fixes en bas */}
+                        {!isReadOnly && !success && (
+                            <div className="fixed bottom-6 right-6 flex gap-4 bg-white/90 backdrop-blur shadow-lg p-2 rounded-lg border border-neutral-200">
+                                <Button onClick={handleSubmit} variant="primary" isLoading={loading} className="shadow-md">
                                     <CheckCircle className="mr-2 h-4 w-4" />
                                     Transmettre au Chef de Service
                                 </Button>
-                            </>
-                        ) : success && (
-                            <Button variant="secondary" disabled className="text-green-600 border-green-200 bg-green-50">
-                                <CheckCircle className="mr-2 h-4 w-4" />
-                                Rapport Transmis !
-                            </Button>
+                            </div>
                         )}
-                    </div>
+
+                        {success && (
+                            <div className="fixed bottom-6 right-6 bg-white/90 backdrop-blur shadow-lg p-2 rounded-lg border border-green-200">
+                                <Button variant="secondary" disabled className="text-green-600 bg-green-50 border-none">
+                                    <CheckCircle className="mr-2 h-4 w-4" />
+                                    Rapport Transmis avec succès
+                                </Button>
+                            </div>
+                        )}
+
+                    </CardContent>
                 </Card>
             )}
         </div>
