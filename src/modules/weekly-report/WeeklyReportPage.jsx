@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { format } from 'date-fns';
+import { format, getISOWeek, getYear } from 'date-fns';
 import { useAuth } from '../../contexts/AuthContext';
 import { storage } from '../../services/storage';
 import { compileWeeklyReport, getWeekRange } from '../../utils/reports';
@@ -73,12 +73,16 @@ const WeeklyReportPage = () => {
 
         try {
             // Clé unique pour la semaine : rapports-hebdo:SERVICE:YYYY-MM-DD(start)
+            const startDate = new Date(period.start);
             const key = `rapports-hebdo:${serviceId}:${period.start}`;
+
             const reportToSave = {
-                id: generateId(),
+                id: generateId(), // Supabase générera son propre UUID, ceci est pour le fallback localStorage
                 type: 'weekly',
                 serviceId: serviceId,
                 period: period,
+                weekNumber: getISOWeek(startDate),
+                year: getYear(startDate),
                 data: reportData.data,
                 status: REPORT_STATUS.TRANSMITTED_TO_CHIEF,
                 submittedAt: new Date().toISOString(),
